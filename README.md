@@ -24,9 +24,10 @@ every warning has an action, and it works from a CSV upload in minutes.
 ## Quick start (engine)
 
 ```bash
-uv sync                 # create venv + install deps
-uv run pytest           # run the test suite
-uv run ruff check .     # lint
+uv sync                          # create venv + install deps
+uv run pytest                    # run the test suite
+uv run ruff check .              # lint
+uv run python scripts/demo.py    # see the action brief on synthetic data
 ```
 
 ## Principles
