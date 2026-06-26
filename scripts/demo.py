@@ -19,6 +19,7 @@ from cashflow_risk.features.store import build_invoice_features
 from cashflow_risk.forecasting.baselines import forecast_cash
 from cashflow_risk.reporting.action_brief import build_action_brief
 from cashflow_risk.risk.baseline import rank_by_cash_at_risk
+from cashflow_risk.risk.forecast_delay import risk_adjusted_delay_fn
 
 
 def _open_at(inv: Invoice, as_of: date) -> bool:
@@ -47,6 +48,7 @@ def main() -> None:
         for inv in ds.invoices
         if _open_at(inv, as_of)
     ]
+    # the forecast is timed by the same risk view that drives the ranking
     forecast = forecast_cash(
         opening_balance=8000,
         as_of=as_of,
@@ -54,6 +56,7 @@ def main() -> None:
         bills=[],
         obligations=[],
         minimum_reserve=6000,
+        payment_delay_days=risk_adjusted_delay_fn(features),
     )
     brief = build_action_brief(forecast, ranked)
 
