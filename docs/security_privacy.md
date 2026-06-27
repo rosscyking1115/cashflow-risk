@@ -24,8 +24,15 @@ product. These constraints are not optional.
   `= + - @` (Excel/Sheets opens accountant exports — this is a real vector).
 - File-upload hardening: size/row limits, MIME validation, XLSX parser-bomb
   protection.
-- Auth + tenant isolation + row-level access checks from Phase 2 (the public
-  demo is multi-tenant the moment it exists).
+- **Auth + tenant isolation — implemented (request layer).** Real uploads
+  (`/api/analyze`) require a verified JWT; the tenant `business_id` is taken from
+  the token, never from client input, so a caller cannot act as another tenant.
+  The demo endpoint is public (synthetic data only). Auth is a provider-agnostic
+  JWT seam (`cashflow_risk.auth`) — a hosted IdP slots into token verification
+  before launch. **Row-level DB access checks land with persistence** (Postgres),
+  reusing the same `Principal` scope.
+- Dev token minting is **disabled by default**; enabled only with `CASHFLOW_ENV=dev`
+  or `CASHFLOW_ALLOW_DEV_TOKEN=1`. Production sets `CASHFLOW_JWT_SECRET`.
 
 ## UK regulatory posture
 

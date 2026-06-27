@@ -60,14 +60,41 @@ export async function fetchDemo(): Promise<Analysis> {
   return asAnalysis(await fetch(`${BASE}/api/analyze/demo`, { method: "POST" }));
 }
 
+// Dev-only token. In production this is replaced by a real login against the IdP;
+// here it keeps the dashboard usable when the API runs with dev tokens enabled.
+let cachedToken: string | null = null;
+
+async function devToken(): Promise<string> {
+  if (cachedToken) return cachedToken;
+  const res = await fetch(`${BASE}/api/auth/dev-token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "demo@local", business_id: "demo-co" }),
+  });
+  if (!res.ok) {
+    throw new Error(
+      "Uploading needs sign-in. Start the API in dev mode (CASHFLOW_ENV=dev) to enable a dev token.",
+    );
+  }
+  cachedToken = ((await res.json()) as { access_token: string }).access_token;
+  return cachedToken;
+}
+
 export async function uploadInvoices(
   file: File,
   openingBalance: number,
   minimumReserve: number,
 ): Promise<Analysis> {
+  const token = await devToken();
   const form = new FormData();
   form.append("invoices", file);
   form.append("opening_balance", String(openingBalance));
   form.append("minimum_reserve", String(minimumReserve));
-  return asAnalysis(await fetch(`${BASE}/api/analyze`, { method: "POST", body: form }));
+  return asAnalysis(
+    await fetch(`${BASE}/api/analyze`, {
+      method: "POST",
+      body: form,
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  );
 }

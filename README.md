@@ -34,16 +34,19 @@ uv run python scripts/demo.py    # see the action brief on synthetic data
 
 Two processes — the API and the Next.js web app:
 
-```bash
-# 1. API (engine over HTTP)
-uv run uvicorn cashflow_risk.api:app --port 8000
+```powershell
+# 1. API (engine over HTTP). CASHFLOW_ENV=dev enables a local token so uploads
+#    work without a hosted login; omit it and only the public demo is available.
+$env:CASHFLOW_ENV="dev"; uv run uvicorn cashflow_risk.api:app --port 8000
 
-# 2. web dashboard (in another terminal)
-cd web && npm install && npm run dev   # http://localhost:3000
+# 2. web dashboard (in another terminal). npm install only the first time.
+cd web ; npm install ; npm run dev   # http://localhost:3000
 ```
 
-The dashboard opens on demo data; use **Invoices CSV** to analyse your own
-export. Point the web app at a non-default API with `NEXT_PUBLIC_API_BASE`.
+The dashboard opens on the **public demo**; use **Invoices CSV** to analyse your
+own export (requires the dev token above — in production this is a real sign-in).
+The tenant is always taken from the token, never client input. Point the web app
+at a non-default API with `NEXT_PUBLIC_API_BASE`.
 
 ## Principles
 
