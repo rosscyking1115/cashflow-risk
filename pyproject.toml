@@ -15,6 +15,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pyjwt>=2.8",
     "sqlalchemy>=2.0",
+    "alembic>=1.13",
 ]
 
 [dependency-groups]
@@ -39,6 +40,7 @@ packages = ["src/cashflow_risk"]
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+extend-exclude = ["alembic"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

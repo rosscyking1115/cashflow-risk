@@ -48,6 +48,16 @@ own export (requires the dev token above — in production this is a real sign-i
 The tenant is always taken from the token, never client input. Point the web app
 at a non-default API with `NEXT_PUBLIC_API_BASE`.
 
+## Database
+
+Defaults to a local SQLite file; set `DATABASE_URL` for Postgres in production.
+SQLite dev auto-creates tables on startup; managed databases use Alembic:
+
+```bash
+uv run alembic upgrade head      # apply migrations
+uv run alembic revision --autogenerate -m "describe change"
+```
+
 ## Principles
 
 - **Trust first.** Calibrated probabilities, honest uncertainty, no false

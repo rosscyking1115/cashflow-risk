@@ -43,10 +43,13 @@ def _session_factory() -> sessionmaker[Session]:
 
 
 def init_db() -> None:
-    """Create tables that don't yet exist. Import models so they're registered."""
+    """Create tables for local SQLite (dev/test). Managed databases use Alembic
+    migrations (``alembic upgrade head``), so this is a no-op for non-SQLite."""
     from cashflow_risk.db import models  # noqa: F401
 
-    Base.metadata.create_all(get_engine())
+    engine = get_engine()
+    if engine.dialect.name == "sqlite":
+        Base.metadata.create_all(engine)
 
 
 def get_session() -> Iterator[Session]:
