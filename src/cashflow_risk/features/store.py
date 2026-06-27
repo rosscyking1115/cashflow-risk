@@ -33,7 +33,8 @@ class InvoiceFeatures:
     is_cold_start: bool
 
 
-def _is_open_at(invoice: Invoice, as_of: date) -> bool:
+def is_open_at(invoice: Invoice, as_of: date) -> bool:
+    """True if the invoice is issued by ``as_of`` and not yet paid at that date."""
     if invoice.issue_date > as_of:
         return False
     return invoice.paid_date is None or invoice.paid_date > as_of
@@ -53,7 +54,7 @@ def build_invoice_features(
 
     features: list[InvoiceFeatures] = []
     for inv in invoices:
-        if not _is_open_at(inv, as_of):
+        if not is_open_at(inv, as_of):
             continue
 
         prior = [p for p in history.get(inv.customer_id, []) if p.id != inv.id]
