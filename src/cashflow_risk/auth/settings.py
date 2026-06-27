@@ -30,3 +30,13 @@ def is_production() -> bool:
 
 def using_default_secret() -> bool:
     return jwt_secret() == _DEV_SECRET
+
+
+def clerk_jwks_url() -> str | None:
+    """Clerk's JWKS endpoint. When set, the API verifies Clerk-issued tokens."""
+    return os.environ.get("CLERK_JWKS_URL") or None
+
+
+def clerk_issuer() -> str | None:
+    """Expected Clerk token issuer (optional but recommended for validation)."""
+    return os.environ.get("CLERK_ISSUER") or None

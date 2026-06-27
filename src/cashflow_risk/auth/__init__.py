@@ -6,6 +6,20 @@ Every real analysis is bound to the authenticated :class:`Principal`'s
 
 from cashflow_risk.auth.dependencies import require_principal
 from cashflow_risk.auth.principal import Principal
-from cashflow_risk.auth.tokens import AuthError, mint_token, verify_token
+from cashflow_risk.auth.tokens import (
+    AuthError,
+    ClerkIdentity,
+    mint_token,
+    verify_clerk_token,
+    verify_token,
+)
 
-__all__ = ["AuthError", "Principal", "mint_token", "require_principal", "verify_token"]
+__all__ = [
+    "AuthError",
+    "ClerkIdentity",
+    "Principal",
+    "mint_token",
+    "require_principal",
+    "verify_clerk_token",
+    "verify_token",
+]
