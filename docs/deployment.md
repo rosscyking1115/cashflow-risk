@@ -52,3 +52,30 @@ Deploys the API (FastAPI), the dashboard (Next.js), and managed Postgres from
   manually: `uv run alembic upgrade head` with `DATABASE_URL` set.
 - **Rollback.** Use Render's "Rollback" to a previous deploy; the DB is unchanged
   unless a migration ran — write migrations to be backward-compatible.
+
+## Custom domain via Cloudflare (optional)
+
+Put a real domain with Cloudflare's DNS + CDN + WAF in front of the Render
+services — no compute moves, you just point DNS at them.
+
+1. **Add the domain to Cloudflare** (change your registrar's nameservers to
+   Cloudflare's).
+2. **Tell Render about the domains.** In each service → *Settings → Custom
+   Domains*, add e.g. `app.yourdomain.com` to **cashflow-web** and
+   `api.yourdomain.com` to **cashflow-api**. Render shows the target host to
+   point at.
+3. **Add DNS records in Cloudflare** (proxied — orange cloud):
+   - `app` → CNAME → `cashflow-web-sidu.onrender.com`
+   - `api` → CNAME → `cashflow-api-zo5f.onrender.com`
+   (Use CNAME flattening if you want the apex domain.)
+4. **SSL mode: Full (strict)** — Render serves valid certificates, so anything
+   less (e.g. Flexible) causes redirect loops.
+5. **Re-point the app at the custom domains and tighten CORS:**
+   - **cashflow-web** env: `NEXT_PUBLIC_API_BASE = https://api.yourdomain.com`,
+     then redeploy with *Clear build cache*.
+   - **cashflow-api** env: replace the wildcard `CASHFLOW_ALLOWED_ORIGIN_REGEX`
+     with an exact `CASHFLOW_ALLOWED_ORIGINS = https://app.yourdomain.com`.
+6. **Caching:** leave the dynamic app uncached; add a Cloudflare cache rule to
+   **bypass `/api/*`** so analyses are never served stale. WAF/bot rules can be
+   enabled as desired.
+
