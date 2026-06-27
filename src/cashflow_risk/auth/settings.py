@@ -22,3 +22,11 @@ def dev_token_enabled() -> bool:
     if os.environ.get("CASHFLOW_ENV", "").lower() == "dev":
         return True
     return os.environ.get("CASHFLOW_ALLOW_DEV_TOKEN", "").lower() in ("1", "true", "yes")
+
+
+def is_production() -> bool:
+    return os.environ.get("CASHFLOW_ENV", "").lower() not in ("", "dev", "test", "local")
+
+
+def using_default_secret() -> bool:
+    return jwt_secret() == _DEV_SECRET

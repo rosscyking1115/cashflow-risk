@@ -21,7 +21,17 @@ DEFAULT_URL = "sqlite:///./cashflow.db"
 
 
 def _database_url() -> str:
-    return os.environ.get("DATABASE_URL", DEFAULT_URL)
+    """The configured URL, normalised to a driver SQLAlchemy understands.
+
+    Managed Postgres (Render/Heroku) hands out ``postgres://``; SQLAlchemy needs
+    an explicit dialect+driver, so we map Postgres URLs onto psycopg v3.
+    """
+    url = os.environ.get("DATABASE_URL", DEFAULT_URL)
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg://" + url[len("postgres://") :]
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url[len("postgresql://") :]
+    return url
 
 
 @lru_cache(maxsize=1)

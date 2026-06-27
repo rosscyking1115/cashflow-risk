@@ -13,6 +13,7 @@ upload (see ``docs/security_privacy.md``).
 
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
@@ -27,25 +28,49 @@ from sqlalchemy.orm import Session
 from cashflow_risk.analysis import analyze_invoices
 from cashflow_risk.api.schemas import AnalysisResponse, IssueDTO, RunSummary
 from cashflow_risk.auth import Principal, mint_token, require_principal
-from cashflow_risk.auth.settings import dev_token_enabled, jwt_secret
+from cashflow_risk.auth.settings import (
+    dev_token_enabled,
+    is_production,
+    jwt_secret,
+    using_default_secret,
+)
 from cashflow_risk.datagen.generator import GeneratorConfig, generate_dataset
 from cashflow_risk.db import get_session, init_db
 from cashflow_risk.db import repository as repo
 from cashflow_risk.ingestion.csv_import import parse_invoices_csv
 
 
+def _allowed_origins() -> list[str]:
+    """Dashboard origins permitted by CORS. Set CASHFLOW_ALLOWED_ORIGINS (comma-
+    separated) in production; defaults to the local dev server."""
+    raw = os.environ.get("CASHFLOW_ALLOWED_ORIGINS")
+    if raw:
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+    return ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+
+def _allowed_origin_regex() -> str | None:
+    """Optional regex of permitted origins (e.g. a platform's wildcard domain)."""
+    return os.environ.get("CASHFLOW_ALLOWED_ORIGIN_REGEX")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    if is_production() and using_default_secret():
+        raise RuntimeError(
+            "Refusing to start: set CASHFLOW_JWT_SECRET in production "
+            "(the default dev secret is insecure)."
+        )
     init_db()
     yield
 
 
 app = FastAPI(title="Cashflow Risk Intelligence API", version="0.1.0", lifespan=lifespan)
 
-# Dev only: the Next.js dashboard runs on :3000. Tighten for deployment.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_allowed_origins(),
+    allow_origin_regex=_allowed_origin_regex(),
     allow_methods=["*"],
     allow_headers=["*"],
 )

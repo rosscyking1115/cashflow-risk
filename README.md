@@ -58,6 +58,12 @@ uv run alembic upgrade head      # apply migrations
 uv run alembic revision --autogenerate -m "describe change"
 ```
 
+## Deploy
+
+API + dashboard + Postgres deploy to Render from [`render.yaml`](render.yaml) —
+push to GitHub, then **New → Blueprint**. Full steps in
+[docs/deployment.md](docs/deployment.md).
+
 ## Principles
 
 - **Trust first.** Calibrated probabilities, honest uncertainty, no false

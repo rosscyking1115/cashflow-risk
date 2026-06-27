@@ -14,14 +14,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Wire Alembic to our models and DATABASE_URL.
-import os
-
+# Wire Alembic to our models and the (normalised) DATABASE_URL.
 from cashflow_risk.db import models  # noqa: F401  (register tables on the metadata)
 from cashflow_risk.db.base import Base
-from cashflow_risk.db.session import DEFAULT_URL
+from cashflow_risk.db.session import _database_url
 
-config.set_main_option("sqlalchemy.url", os.environ.get("DATABASE_URL", DEFAULT_URL))
+config.set_main_option("sqlalchemy.url", _database_url())
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

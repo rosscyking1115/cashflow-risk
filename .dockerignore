@@ -1,0 +1,17 @@
+# Keep the API image small: only ship the Python app + migrations.
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.mypy_cache
+.ruff_cache
+.pytest_cache
+*.db
+*.duckdb
+data
+
+# Not needed in the API image
+web
+tests
+docs
