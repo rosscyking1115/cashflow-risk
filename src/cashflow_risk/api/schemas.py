@@ -7,7 +7,7 @@ stable shape, not on internal representations.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -86,6 +86,16 @@ class IssueDTO(BaseModel):
     severity: str
 
 
+class RunSummary(BaseModel):
+    """A row in a Business's analysis history."""
+
+    id: str
+    as_of: date
+    runway_weeks: int
+    has_shortfall: bool
+    created_at: datetime
+
+
 class AnalysisResponse(BaseModel):
     business_id: str
     as_of: date
@@ -94,6 +104,7 @@ class AnalysisResponse(BaseModel):
     top_risks: list[RiskDTO]
     brief: BriefDTO
     data_issues: list[IssueDTO] = []
+    run_id: str | None = None  # set when the analysis is persisted
 
     @classmethod
     def of(

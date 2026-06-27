@@ -14,6 +14,7 @@ build/
 # Data — never commit real financial data. Synthetic fixtures live under tests/.
 data/
 *.duckdb
+*.db
 *.parquet
 !tests/**/*.parquet
 

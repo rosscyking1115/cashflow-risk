@@ -3,7 +3,8 @@
 Two analysis entry points: a zero-input ``/api/analyze/demo`` over synthetic data
 (public — no real data, useful for marketing and user interviews), and
 ``/api/analyze`` which ingests an uploaded invoice CSV (**authenticated**; the
-tenant is taken from the token, never from client input).
+tenant is taken from the token, never from client input). Authenticated analyses
+are persisted and retrievable via the tenant-scoped ``/api/runs`` endpoints.
 
 Auth is a provider-agnostic JWT seam (see ``cashflow_risk.auth``). A hosted IdP
 slots into token verification before launch. A DPIA precedes the first real
@@ -12,21 +13,34 @@ upload (see ``docs/security_privacy.md``).
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from typing import Annotated
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from cashflow_risk.analysis import analyze_invoices
-from cashflow_risk.api.schemas import AnalysisResponse, IssueDTO
+from cashflow_risk.api.schemas import AnalysisResponse, IssueDTO, RunSummary
 from cashflow_risk.auth import Principal, mint_token, require_principal
 from cashflow_risk.auth.settings import dev_token_enabled, jwt_secret
 from cashflow_risk.datagen.generator import GeneratorConfig, generate_dataset
+from cashflow_risk.db import get_session, init_db
+from cashflow_risk.db import repository as repo
 from cashflow_risk.ingestion.csv_import import parse_invoices_csv
 
-app = FastAPI(title="Cashflow Risk Intelligence API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    init_db()
+    yield
+
+
+app = FastAPI(title="Cashflow Risk Intelligence API", version="0.1.0", lifespan=lifespan)
 
 # Dev only: the Next.js dashboard runs on :3000. Tighten for deployment.
 app.add_middleware(
@@ -35,6 +49,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+SessionDep = Annotated[Session, Depends(get_session)]
+PrincipalDep = Annotated[Principal, Depends(require_principal)]
 
 
 class DevTokenRequest(BaseModel):
@@ -72,7 +89,8 @@ def analyze_demo() -> AnalysisResponse:
 
 @app.post("/api/analyze")
 async def analyze_upload(
-    principal: Annotated[Principal, Depends(require_principal)],
+    principal: PrincipalDep,
+    session: SessionDep,
     invoices: Annotated[UploadFile, File()],
     opening_balance: Annotated[float, Form()] = 0.0,
     minimum_reserve: Annotated[float, Form()] = 0.0,
@@ -90,4 +108,39 @@ async def analyze_upload(
         minimum_reserve=minimum_reserve,
         business_id=principal.business_id,  # tenant from token, never client input
     )
-    return AnalysisResponse.of(analysis, data_issues=issues)
+    response = AnalysisResponse.of(analysis, data_issues=issues)
+    response.run_id = uuid4().hex
+    repo.save_run(
+        session,
+        run_id=response.run_id,
+        business_id=principal.business_id,
+        as_of=response.as_of,
+        runway_weeks=response.brief.runway_weeks,
+        has_shortfall=response.brief.has_shortfall,
+        minimum_reserve=response.minimum_reserve,
+        payload=response.model_dump(mode="json"),
+    )
+    return response
+
+
+@app.get("/api/runs")
+def list_runs(principal: PrincipalDep, session: SessionDep) -> list[RunSummary]:
+    rows = repo.list_runs(session, business_id=principal.business_id)
+    return [
+        RunSummary(
+            id=r.id,
+            as_of=r.as_of,
+            runway_weeks=r.runway_weeks,
+            has_shortfall=r.has_shortfall,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+
+@app.get("/api/runs/{run_id}")
+def get_run(run_id: str, principal: PrincipalDep, session: SessionDep) -> AnalysisResponse:
+    row = repo.get_run(session, business_id=principal.business_id, run_id=run_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
+    return AnalysisResponse.model_validate(row.payload)
