@@ -30,6 +30,21 @@ uv run ruff check .              # lint
 uv run python scripts/demo.py    # see the action brief on synthetic data
 ```
 
+## Run the dashboard
+
+Two processes — the API and the Next.js web app:
+
+```bash
+# 1. API (engine over HTTP)
+uv run uvicorn cashflow_risk.api:app --port 8000
+
+# 2. web dashboard (in another terminal)
+cd web && npm install && npm run dev   # http://localhost:3000
+```
+
+The dashboard opens on demo data; use **Invoices CSV** to analyse your own
+export. Point the web app at a non-default API with `NEXT_PUBLIC_API_BASE`.
+
 ## Principles
 
 - **Trust first.** Calibrated probabilities, honest uncertainty, no false

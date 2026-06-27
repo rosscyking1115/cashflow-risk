@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  /* Calm control-room palette — cool, trustworthy, not cream/terracotta. */
+  --color-paper: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-hairline: #e6e9ef;
+  --color-ink: #11203a;
+  --color-muted: #5b6b86;
+
+  --color-accent: #0b6b72;
+  --color-accent-ink: #08474b;
+  --color-accent-soft: #e3f0ef;
+
+  /* Risk bands — the only loud colour, kept editorial-muted. */
+  --color-high: #b23a48;
+  --color-high-soft: #f6e7e9;
+  --color-medium: #c08a2d;
+  --color-medium-soft: #f6eedd;
+  --color-low: #3e7c6a;
+  --color-low-soft: #e5f0eb;
+}
+
+@theme inline {
+  --font-display: var(--font-space-grotesk);
+  --font-body: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
