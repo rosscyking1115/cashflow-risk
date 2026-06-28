@@ -45,6 +45,7 @@ export interface Analysis {
   top_risks: Risk[];
   brief: Brief;
   data_issues: Issue[];
+  run_id: string | null;
 }
 
 import { clerkEnabled } from "@/lib/clerk";
@@ -88,7 +89,7 @@ async function devToken(): Promise<string> {
   return cachedToken;
 }
 
-async function uploadToken(): Promise<string> {
+async function authToken(): Promise<string> {
   if (clerkEnabled) {
     const token = await window.Clerk?.session?.getToken();
     if (!token) throw new Error("Please sign in to analyse your own invoices.");
@@ -102,7 +103,7 @@ export async function uploadInvoices(
   openingBalance: number,
   minimumReserve: number,
 ): Promise<Analysis> {
-  const token = await uploadToken();
+  const token = await authToken();
   const form = new FormData();
   form.append("invoices", file);
   form.append("opening_balance", String(openingBalance));
@@ -111,6 +112,32 @@ export async function uploadInvoices(
     await fetch(`${BASE}/api/analyze`, {
       method: "POST",
       body: form,
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  );
+}
+
+export interface RunSummary {
+  id: string;
+  as_of: string;
+  runway_weeks: number;
+  has_shortfall: boolean;
+  created_at: string;
+}
+
+export async function fetchRuns(): Promise<RunSummary[]> {
+  const token = await authToken();
+  const res = await fetch(`${BASE}/api/runs`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Could not load history (${res.status}).`);
+  return (await res.json()) as RunSummary[];
+}
+
+export async function fetchRun(id: string): Promise<Analysis> {
+  const token = await authToken();
+  return asAnalysis(
+    await fetch(`${BASE}/api/runs/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   );

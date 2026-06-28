@@ -1,11 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { type Analysis, fetchDemo, uploadInvoices } from "@/lib/api";
+import {
+  type Analysis,
+  type RunSummary,
+  fetchDemo,
+  fetchRun,
+  fetchRuns,
+  uploadInvoices,
+} from "@/lib/api";
 import { ActionList } from "@/components/ActionList";
 import { AuthArea } from "@/components/AuthArea";
 import { CashInstrument } from "@/components/CashInstrument";
 import { DataIssues } from "@/components/DataIssues";
+import { HistoryPanel } from "@/components/HistoryPanel";
 import { ModeBar } from "@/components/ModeBar";
 import { RiskTable } from "@/components/RiskTable";
 import { RunwayReadout } from "@/components/RunwayReadout";
@@ -15,6 +23,8 @@ export default function Page() {
   const [data, setData] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // null = history unavailable (signed out / demo); [] = signed in, none yet.
+  const [runs, setRuns] = useState<RunSummary[] | null>(null);
 
   const load = useCallback(async (request: Promise<Analysis>) => {
     setLoading(true);
@@ -28,9 +38,25 @@ export default function Page() {
     }
   }, []);
 
+  const refreshHistory = useCallback(async () => {
+    try {
+      setRuns(await fetchRuns());
+    } catch {
+      setRuns(null); // not authenticated — hide the panel
+    }
+  }, []);
+
   useEffect(() => {
-    load(fetchDemo());
-  }, [load]);
+    void (async () => {
+      await load(fetchDemo());
+      await refreshHistory();
+    })();
+  }, [load, refreshHistory]);
+
+  const handleUpload = async (file: File, opening: number, reserve: number) => {
+    await load(uploadInvoices(file, opening, reserve));
+    await refreshHistory();
+  };
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-8">
@@ -44,13 +70,7 @@ export default function Page() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <ModeBar
-            busy={loading}
-            onDemo={() => load(fetchDemo())}
-            onUpload={(file, opening, reserve) =>
-              load(uploadInvoices(file, opening, reserve))
-            }
-          />
+          <ModeBar busy={loading} onDemo={() => load(fetchDemo())} onUpload={handleUpload} />
           {clerkEnabled && <AuthArea />}
         </div>
       </header>
@@ -73,6 +93,14 @@ export default function Page() {
 
       {data && (
         <div className={`mt-6 space-y-5 ${loading ? "opacity-60" : "rise"}`}>
+          {runs && (
+            <HistoryPanel
+              runs={runs}
+              activeId={data.run_id ?? null}
+              onSelect={(id) => load(fetchRun(id))}
+            />
+          )}
+
           <section className="grid gap-8 rounded-xl border border-hairline bg-surface p-6 md:grid-cols-2 md:items-center">
             <RunwayReadout brief={data.brief} />
             <CashInstrument
