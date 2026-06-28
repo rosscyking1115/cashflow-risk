@@ -53,6 +53,28 @@ Deploys the API (FastAPI), the dashboard (Next.js), and managed Postgres from
 - **Rollback.** Use Render's "Rollback" to a previous deploy; the DB is unchanged
   unless a migration ran — write migrations to be backward-compatible.
 
+## Enable real uploads (Clerk)
+
+Until Clerk is configured the deploy runs as the **public demo** (uploads are
+disabled). To turn on sign-in and authenticated uploads:
+
+1. Create a free app at **clerk.com**. From its dashboard:
+   - **API keys** → copy the **Publishable key** (`pk_…`) and **Secret key** (`sk_…`).
+   - The **JWKS URL** and **Issuer** are your Clerk Frontend API URL: JWKS is
+     `https://<your-app>.clerk.accounts.dev/.well-known/jwks.json` and the issuer
+     is `https://<your-app>.clerk.accounts.dev` (use your production Clerk domain
+     when you have one).
+2. **cashflow-api** env: set `CLERK_JWKS_URL` and `CLERK_ISSUER`. Redeploy.
+3. **cashflow-web** env: set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and
+   `CLERK_SECRET_KEY`. Redeploy with **Clear build cache** (the publishable key is
+   inlined at build).
+4. The dashboard now shows **Sign in**; signed-in users upload their own invoices
+   (each Clerk user is their own tenant). The demo stays public.
+
+How it works: the web app sends the Clerk session token; the API verifies it
+against Clerk's JWKS (RS256) and scopes data to the Clerk user id. No keys =
+demo-only, so it's safe to deploy before configuring Clerk.
+
 ## Custom domain via Cloudflare (optional)
 
 Put a real domain with Cloudflare's DNS + CDN + WAF in front of the Render

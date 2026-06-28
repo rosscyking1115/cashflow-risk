@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { type Analysis, fetchDemo, uploadInvoices } from "@/lib/api";
 import { ActionList } from "@/components/ActionList";
+import { AuthArea } from "@/components/AuthArea";
 import { CashInstrument } from "@/components/CashInstrument";
 import { DataIssues } from "@/components/DataIssues";
 import { ModeBar } from "@/components/ModeBar";
 import { RiskTable } from "@/components/RiskTable";
 import { RunwayReadout } from "@/components/RunwayReadout";
+import { clerkEnabled } from "@/lib/clerk";
 
 export default function Page() {
   const [data, setData] = useState<Analysis | null>(null);
@@ -41,13 +43,16 @@ export default function Page() {
             Which late payments threaten your runway — and what to do this week.
           </p>
         </div>
-        <ModeBar
-          busy={loading}
-          onDemo={() => load(fetchDemo())}
-          onUpload={(file, opening, reserve) =>
-            load(uploadInvoices(file, opening, reserve))
-          }
-        />
+        <div className="flex items-center gap-4">
+          <ModeBar
+            busy={loading}
+            onDemo={() => load(fetchDemo())}
+            onUpload={(file, opening, reserve) =>
+              load(uploadInvoices(file, opening, reserve))
+            }
+          />
+          {clerkEnabled && <AuthArea />}
+        </div>
       </header>
 
       {error && (

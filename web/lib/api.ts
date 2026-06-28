@@ -47,6 +47,14 @@ export interface Analysis {
   data_issues: Issue[];
 }
 
+import { clerkEnabled } from "@/lib/clerk";
+
+declare global {
+  interface Window {
+    Clerk?: { session?: { getToken: () => Promise<string | null> } };
+  }
+}
+
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 async function asAnalysis(res: Response): Promise<Analysis> {
@@ -80,12 +88,21 @@ async function devToken(): Promise<string> {
   return cachedToken;
 }
 
+async function uploadToken(): Promise<string> {
+  if (clerkEnabled) {
+    const token = await window.Clerk?.session?.getToken();
+    if (!token) throw new Error("Please sign in to analyse your own invoices.");
+    return token;
+  }
+  return devToken();
+}
+
 export async function uploadInvoices(
   file: File,
   openingBalance: number,
   minimumReserve: number,
 ): Promise<Analysis> {
-  const token = await devToken();
+  const token = await uploadToken();
   const form = new FormData();
   form.append("invoices", file);
   form.append("opening_balance", String(openingBalance));

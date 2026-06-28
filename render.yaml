@@ -32,6 +32,11 @@ services:
       # Trust the dashboard's Render domain without hard-coding its exact name.
       - key: CASHFLOW_ALLOWED_ORIGIN_REGEX
         value: "https://.*\\.onrender\\.com"
+      # Clerk: set both to enable authenticated uploads (see docs/deployment.md).
+      - key: CLERK_JWKS_URL
+        sync: false
+      - key: CLERK_ISSUER
+        sync: false
 
   # Next.js dashboard (Node).
   - type: web
@@ -45,4 +50,9 @@ services:
       # Set to the API service URL after first deploy, then redeploy (clear
       # build cache) so Next inlines it. e.g. https://cashflow-api.onrender.com
       - key: NEXT_PUBLIC_API_BASE
+        sync: false
+      # Clerk: set both to enable sign-in + uploads (see docs/deployment.md).
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
         sync: false

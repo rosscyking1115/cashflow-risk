@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { clerkEnabled } from "@/lib/clerk";
 import "./globals.css";
 
 const display = Space_Grotesk({
@@ -32,7 +34,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  return (
+  const tree = (
     <html lang="en-GB" className="h-full antialiased">
       <body
         className={`${display.variable} ${body.variable} ${mono.variable} min-h-full`}
@@ -41,4 +43,7 @@ export default function RootLayout({
       </body>
     </html>
   );
+
+  // Only mount Clerk when configured, so the demo runs without keys.
+  return clerkEnabled ? <ClerkProvider>{tree}</ClerkProvider> : tree;
 }
