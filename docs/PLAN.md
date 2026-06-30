@@ -5,6 +5,12 @@
 > review (product/GTM, data-science/ML, architecture/security/regulatory).
 > **Primary goal: a micro-SaaS that UK SMEs and accountants would trust and
 > use.** Validation leads; the build follows demand.
+>
+> **v3 update (§0.1):** re-evaluated by three agents (product strategy,
+> architecture/skills-fit, Companies House API research) after a prompt to add a
+> filing-risk feature and "naturally use missing skills". Headline: **stay
+> micro-SaaS-first; Companies House is a counterparty *risk feature*, not a second
+> dashboard; adopt only the skills the wedge actually demands.**
 
 ## 0. What changed from v1, and why
 
@@ -19,6 +25,63 @@ below are baked into the phasing.
 | D | Auth/tenant-isolation in Phase 4 but a public multi-user demo in Phase 2; DPIA gated on connectors | **Auth + tenant isolation move to Phase 2.** DPIA triggered by **first real personal/financial data**, not connectors. Add ICO fee, CSV-injection defence, Sentry PII scrubbing, harder MTD/VAT wording. |
 | E | ~10 "core" MVP features when the wedge needs ~3 | **MVP = 13-week forecast (P50) + invoice ranking by cash-at-risk + action brief + CSV/demo import.** Defer VAT estimation, anomaly/dedup, full scenario planner (keep one toggle), PDF, P10/P90 bands. |
 | F | "Late payment" label undefined; eval split named but under-specified | **Label pinned now** (issue-time, censoring handled). As-of feature store, rolling-origin backtest, group-aware splits, **asymmetric/pinball forecast loss + shortfall-event recall**, PR-AUC vs prevalence, quantified gate thresholds. |
+
+## 0.1 v3 re-evaluation — Companies House & the "missing skills"
+
+Three agents converged on these verdicts:
+
+- **Stay micro-SaaS-first (~85/15).** "Naturally use missing skills" is a
+  portfolio motive; adopt a skill only when the wedge demands it, in the phase it
+  demands it. The skills that *fit* are the ones this plan already arrived at
+  independently — that's the filter.
+- **Companies House = a counterparty risk *feature*, not a parallel compliance
+  dashboard.** It enriches the late-payment score of the user's *customers* (who
+  are often limited companies); the output stays cash-at-risk + chase-this-week. A
+  standalone "your filing deadline is in 14 days" surface splits the product
+  across two personas (owner vs accountant) — defer it to Phase 5+ as a separate
+  module, only if Gate 5 passes.
+- **CH scope is narrow and must be stated:** Companies House lists **limited
+  companies + LLPs only — sole traders / freelancers are NOT on it.** So CH helps
+  score *incorporated customers*; it does nothing for a sole-trader user's own
+  filings (their equivalent is the fixed 31 Jan HMRC Self Assessment date — a
+  static reminder, not an API lookup).
+- **Highest-leverage architectural change: replace `business_id == user_id` with a
+  `Membership(user_id, business_id, role)` model.** Real RBAC (not a toy), unblocks
+  the accountant/advisor channel, gives CH a home (companies are shared across
+  tenants), enables cross-client export — and is cheap because `repository.py`
+  already scopes every query by `business_id`, so RBAC is a thin authorization
+  layer in front of an existing seam.
+
+**Skills filter (verdicts):**
+
+| Skill | Verdict | Where |
+|---|---|---|
+| Auth / **RBAC** (owner / invited accountant) | **Do now** | `Membership` model; Clerk Organizations |
+| **Excel** export | **Do now** | `GET /api/runs/{id}/export.xlsx` over the persisted payload, `=+-@`-escaped |
+| **MLflow** | Phase 3 only | Tracking-only, training-time, **outside** the SaaS runtime |
+| **Orchestration** (Prefect/Dagster) | When CH refresh exists | Start as a **Render Cron** job calling plain `refresh()`/`recompute()` fns; wrap in Prefect later at real multi-stage-DAG scale |
+| **Snowflake** / **dbt** / **Power BI** | **Out of product scope** | Would distort a lean per-tenant SaaS. Pursue only as a deliberate *separate* data-platform/BI project, or confine to an internal benchmark lane (GOV.UK data + anonymised cohort stats — never tenant data). Power BI is reachable for free as a byproduct of the Excel export. |
+
+**Current state vs plan (honesty):** the engine today is **pure pandas + a
+rules-based scorer**; DuckDB and ML (LightGBM/MLflow) are *planned*, not built.
+**Live now:** Clerk auth + tenant isolation, persistence + Alembic migrations,
+dashboard + demo + authenticated upload + run history, deployed on Render.
+
+**Revised next increments (in order):**
+1. **Close the trust path** — Clerk keys → real uploads work; DPIA before first
+   real data; Sentry PII scrubbing. (The bottleneck: a business can't safely
+   upload yet.)
+2. **RBAC `Membership` model + accountant invite + Excel export.**
+3. **Companies House enrichment** (counterparty risk feature): onboarding
+   name→number via `/search/companies`; a daily **Render Cron** poll of
+   `GET /company/{number}` reading `accounts.next_accounts.due_on`/`.overdue`,
+   `confirmation_statement.next_due`/`.overdue`, `company_status`,
+   `links.insolvency`/`links.charges`; a shared `company_signals` table (keyed by
+   company number, joined per tenant); signals feed the risk score. Poll, don't
+   stream. API key auth (free, 600 req/5 min). Mind the deprecated `accounts.next_*`
+   fields and the overdue-processing-lag grace buffer.
+4. **Phase 3 model + MLflow** — rules → logistic → LightGBM-if-it-earns-it, with
+   the CH features now available; MLflow tracks the rolling-origin bake-off.
 
 ## 1. Product thesis (unchanged wedge)
 
@@ -188,4 +251,8 @@ real data so the synthetic world is plausible, not invented.
 - FCA open banking (16m+ users) — connectors deferred to Phase 3+ via a
   regulated provider (rely on their authorisation; we are not an AISP).
 - Small Business Commissioner — late payments cost UK SMEs ~£11bn/year.
-- Companies House Developer Hub (companies only, never sole-trader individuals).
+- Companies House Public Data API (free; API-key over HTTP Basic; 600 req/5 min;
+  poll, don't stream for MVP). Used for **counterparty (customer) risk
+  enrichment** — limited companies + LLPs only; **sole traders/freelancers are not
+  registered there**. Company profile gives statutory deadlines + overdue flags +
+  insolvency/charges links in one call. Never profile sole-trader individuals.
