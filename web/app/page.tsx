@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   type Analysis,
   type RunSummary,
+  downloadRunXlsx,
   fetchDemo,
   fetchRun,
   fetchRuns,
@@ -58,6 +59,14 @@ export default function Page() {
     await refreshHistory();
   };
 
+  const handleExport = async (runId: string) => {
+    try {
+      await downloadRunXlsx(runId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Export failed.");
+    }
+  };
+
   return (
     <main className="mx-auto max-w-5xl px-5 py-8">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-hairline pb-5">
@@ -99,6 +108,17 @@ export default function Page() {
               activeId={data.run_id ?? null}
               onSelect={(id) => load(fetchRun(id))}
             />
+          )}
+
+          {data.run_id && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => data.run_id && handleExport(data.run_id)}
+                className="rounded-md border border-hairline px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                Export to Excel
+              </button>
+            </div>
           )}
 
           <section className="grid gap-8 rounded-xl border border-hairline bg-surface p-6 md:grid-cols-2 md:items-center">

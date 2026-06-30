@@ -142,3 +142,19 @@ export async function fetchRun(id: string): Promise<Analysis> {
     }),
   );
 }
+
+export async function downloadRunXlsx(id: string): Promise<void> {
+  const token = await authToken();
+  const res = await fetch(`${BASE}/api/runs/${id}/export.xlsx`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Export failed (${res.status}).`);
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `cashflow-${id}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}

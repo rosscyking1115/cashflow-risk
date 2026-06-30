@@ -20,12 +20,13 @@ from datetime import date, timedelta
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from cashflow_risk.analysis import analyze_invoices
+from cashflow_risk.api.export import analysis_to_xlsx
 from cashflow_risk.api.schemas import AnalysisResponse, IssueDTO, RunSummary
 from cashflow_risk.auth import Principal, mint_token, require_principal
 from cashflow_risk.auth.settings import (
@@ -169,3 +170,19 @@ def get_run(run_id: str, principal: PrincipalDep, session: SessionDep) -> Analys
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
     return AnalysisResponse.model_validate(row.payload)
+
+
+_XLSX_MEDIA = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@app.get("/api/runs/{run_id}/export.xlsx")
+def export_run(run_id: str, principal: PrincipalDep, session: SessionDep) -> Response:
+    row = repo.get_run(session, business_id=principal.business_id, run_id=run_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
+    workbook = analysis_to_xlsx(AnalysisResponse.model_validate(row.payload))
+    return Response(
+        content=workbook,
+        media_type=_XLSX_MEDIA,
+        headers={"Content-Disposition": f'attachment; filename="cashflow-{run_id}.xlsx"'},
+    )
