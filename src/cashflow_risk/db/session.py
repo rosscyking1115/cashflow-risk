@@ -10,14 +10,28 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 from functools import lru_cache
+from typing import Any
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from cashflow_risk.db.base import Base
 
 DEFAULT_URL = "sqlite:///./cashflow.db"
+
+
+def _enforce_sqlite_foreign_keys(engine: Engine) -> Engine:
+    """SQLite ignores foreign keys unless asked. Turn them on so dev/test behave
+    like Postgres (this is what would have caught the FK-ordering bug)."""
+
+    @event.listens_for(engine, "connect")
+    def _set_pragma(dbapi_connection: Any, _record: Any) -> None:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    return engine
 
 
 def _database_url() -> str:
@@ -42,8 +56,10 @@ def get_engine() -> Engine:
         connect_args = {"check_same_thread": False}
         if in_memory:
             # one shared connection so the in-memory schema survives across threads
-            return create_engine(url, connect_args=connect_args, poolclass=StaticPool)
-        return create_engine(url, connect_args=connect_args)
+            engine = create_engine(url, connect_args=connect_args, poolclass=StaticPool)
+        else:
+            engine = create_engine(url, connect_args=connect_args)
+        return _enforce_sqlite_foreign_keys(engine)
     return create_engine(url, pool_pre_ping=True)
 
 

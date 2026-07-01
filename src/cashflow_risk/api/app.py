@@ -13,15 +13,28 @@ upload (see ``docs/security_privacy.md``).
 
 from __future__ import annotations
 
+import logging
 import os
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -55,6 +68,9 @@ def _allowed_origin_regex() -> str | None:
     return os.environ.get("CASHFLOW_ALLOWED_ORIGIN_REGEX")
 
 
+logger = logging.getLogger("cashflow_risk.api")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if is_production() and using_default_secret():
@@ -75,6 +91,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def _origin_allowed(origin: str) -> bool:
+    if origin in _allowed_origins():
+        return True
+    regex = _allowed_origin_regex()
+    return bool(regex and re.fullmatch(regex, origin))
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception(request: Request, exc: Exception) -> JSONResponse:
+    """Return 500s *with* CORS headers so the browser shows a real error instead of
+    an opaque 'Failed to fetch' (Starlette's error middleware sits outside CORS)."""
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    response = JSONResponse(status_code=500, content={"detail": "Internal server error"})
+    origin = request.headers.get("origin")
+    if origin and _origin_allowed(origin):
+        response.headers["Access-Control-Allow-Origin"] = origin
+    return response
+
 
 SessionDep = Annotated[Session, Depends(get_session)]
 PrincipalDep = Annotated[Principal, Depends(require_principal)]

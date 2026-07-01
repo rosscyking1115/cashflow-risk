@@ -37,6 +37,7 @@ def save_run(
     payload: dict[str, Any],
 ) -> AnalysisRunRow:
     ensure_business(session, business_id)
+    session.flush()  # insert the Business before the run (satisfies the FK on Postgres)
     row = AnalysisRunRow(
         id=run_id,
         business_id=business_id,
