@@ -1,10 +1,15 @@
 """Rules-vs-logistic bake-off over a rolling-origin backtest (PLAN §7/§8.3).
 
-    uv run python scripts/bakeoff_risk.py
+    uv run python scripts/bakeoff_risk.py [--track] [--tracking-uri URI]
 
 Runs both scorers over identical walk-forward folds on synthetic data, across
 seeds, and prints pooled PR-AUC (with lift over prevalence), top-decile precision,
 calibration, and the cold-start slice — then a Gate-3 verdict.
+
+``--track`` logs every scorer x seed as an MLflow run (default store: a local
+``sqlite:///mlflow.db`` — gitignored, no server), so the rules → logistic →
+(maybe) LightGBM progression stays auditable. Tracking is training-time only:
+mlflow-skinny comes from the ``train`` dependency group, never the runtime image.
 
 Honest headline: on this generator the fitted model ties or narrowly beats the
 rules baseline, with or without Companies House signals — and the printed
@@ -19,7 +24,9 @@ data (PLAN §8.3); this bake-off proves the pipeline, folds, and metrics work.
 
 from __future__ import annotations
 
+import argparse
 import sys
+from collections.abc import Callable
 from datetime import timedelta
 
 from cashflow_risk.datagen.generator import GeneratorConfig, generate_dataset
@@ -51,9 +58,42 @@ def _row(name: str, r: BacktestResult) -> str:
     )
 
 
+def _make_logger(tracking_uri: str) -> Callable[[str, int, BacktestResult], None]:
+    """Build the MLflow logger. Imported lazily: without the ``train`` dependency
+    group the bake-off still runs — only ``--track`` needs mlflow."""
+    from cashflow_risk.risk.tracking import log_backtest
+
+    def log(name: str, seed: int, result: BacktestResult) -> None:
+        log_backtest(
+            result,
+            run_name=f"{name}-seed{seed}",
+            params={
+                "model": name,
+                "seed": seed,
+                "horizon_days": HORIZON_DAYS,
+                "n_folds": N_FOLDS,
+                "n_customers": 30,
+                "weeks": 52,
+            },
+            tracking_uri=tracking_uri,
+        )
+
+    return log
+
+
 def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
+
+    parser = argparse.ArgumentParser(description="Rules-vs-logistic risk bake-off")
+    parser.add_argument("--track", action="store_true", help="log runs to MLflow")
+    parser.add_argument(
+        "--tracking-uri",
+        default="sqlite:///mlflow.db",
+        help="MLflow tracking URI (default: local sqlite:///mlflow.db)",
+    )
+    args = parser.parse_args()
+    log = _make_logger(args.tracking_uri) if args.track else None
 
     print(f"\nRisk bake-off — {N_FOLDS}-fold rolling origin, issue-time, {HORIZON_DAYS}d horizon")
     print("(synthetic data — pipeline check, not a predictive claim)")
@@ -104,11 +144,15 @@ def main() -> None:
                 lift = result.pooled.average_precision - result.pooled.prevalence
                 lifts.setdefault(key, []).append(lift)
                 print(_row(key, result))
+                if log is not None:
+                    log(key, seed, result)
         ceiling = run_backtest(rolling_origin_folds(variants[""], n_folds=N_FOLDS), _oracle)
         lifts.setdefault("ceiling", []).append(
             ceiling.pooled.average_precision - ceiling.pooled.prevalence
         )
         print(_row("ceiling", ceiling))
+        if log is not None:
+            log("ceiling", seed, ceiling)
 
     print("-" * 72)
     means = {k: sum(v) / len(v) for k, v in lifts.items()}

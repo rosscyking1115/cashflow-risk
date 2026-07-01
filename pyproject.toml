@@ -30,6 +30,12 @@ dev = [
     "mypy>=1.10",
     "pandas-stubs>=2.2",
     "types-python-dateutil>=2.9",
+    { include-group = "train" },
+]
+# Training-time lane (PLAN §0.1: MLflow is tracking-only and lives OUTSIDE the
+# SaaS runtime — the Docker image installs with --no-dev and never gets this).
+train = [
+    "mlflow-skinny>=3",
 ]
 
 [build-system]
@@ -65,4 +71,8 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "sklearn.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "mlflow.*"
 ignore_missing_imports = true
