@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from cashflow_risk.db.models import AnalysisRunRow, BusinessRow
+from cashflow_risk.db.models import AnalysisRunRow, BusinessRow, MembershipRow
 
 
 def ensure_business(session: Session, business_id: str, name: str | None = None) -> BusinessRow:
@@ -68,3 +68,37 @@ def get_run(session: Session, *, business_id: str, run_id: str) -> AnalysisRunRo
         AnalysisRunRow.business_id == business_id,
     )
     return session.scalars(stmt).first()
+
+
+def get_membership(session: Session, *, user_id: str, business_id: str) -> MembershipRow | None:
+    stmt = select(MembershipRow).where(
+        MembershipRow.user_id == user_id,
+        MembershipRow.business_id == business_id,
+    )
+    return session.scalars(stmt).first()
+
+
+def list_memberships(session: Session, *, user_id: str) -> list[MembershipRow]:
+    stmt = (
+        select(MembershipRow)
+        .where(MembershipRow.user_id == user_id)
+        .order_by(MembershipRow.created_at)
+    )
+    return list(session.scalars(stmt))
+
+
+def add_membership(
+    session: Session, *, user_id: str, business_id: str, role: str
+) -> MembershipRow:
+    ensure_business(session, business_id)
+    session.flush()  # insert the Business before the membership (FK on Postgres)
+    existing = get_membership(session, user_id=user_id, business_id=business_id)
+    if existing is not None:
+        existing.role = role
+        session.commit()
+        return existing
+    membership = MembershipRow(user_id=user_id, business_id=business_id, role=role)
+    session.add(membership)
+    session.commit()
+    session.refresh(membership)
+    return membership

@@ -86,6 +86,18 @@ class IssueDTO(BaseModel):
     severity: str
 
 
+class BusinessMembershipDTO(BaseModel):
+    """A business the caller can access, and their role on it."""
+
+    business_id: str
+    role: str
+
+
+class AddMemberRequest(BaseModel):
+    user_id: str
+    role: str
+
+
 class RunSummary(BaseModel):
     """A row in a Business's analysis history."""
 

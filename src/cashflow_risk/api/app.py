@@ -40,8 +40,15 @@ from sqlalchemy.orm import Session
 
 from cashflow_risk.analysis import analyze_invoices
 from cashflow_risk.api.export import analysis_to_xlsx
-from cashflow_risk.api.schemas import AnalysisResponse, IssueDTO, RunSummary
+from cashflow_risk.api.schemas import (
+    AddMemberRequest,
+    AnalysisResponse,
+    BusinessMembershipDTO,
+    IssueDTO,
+    RunSummary,
+)
 from cashflow_risk.auth import Principal, mint_token, require_principal
+from cashflow_risk.auth.principal import OWNER, ROLES
 from cashflow_risk.auth.settings import (
     dev_token_enabled,
     is_production,
@@ -156,6 +163,8 @@ async def analyze_upload(
     opening_balance: Annotated[float, Form()] = 0.0,
     minimum_reserve: Annotated[float, Form()] = 0.0,
 ) -> AnalysisResponse:
+    if principal.role != OWNER:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Read-only access: only an owner can upload")
     raw = (await invoices.read()).decode("utf-8-sig", errors="replace")
     parsed = parse_invoices_csv(raw, business_id=principal.business_id)
     issues = [
@@ -182,6 +191,42 @@ async def analyze_upload(
         payload=response.model_dump(mode="json"),
     )
     return response
+
+
+def _is_owner(session: Session, *, user_id: str, business_id: str) -> bool:
+    if business_id == user_id:  # a user always owns their own business
+        return True
+    membership = repo.get_membership(session, user_id=user_id, business_id=business_id)
+    return membership is not None and membership.role == OWNER
+
+
+@app.get("/api/businesses")
+def list_businesses(principal: PrincipalDep, session: SessionDep) -> list[BusinessMembershipDTO]:
+    own = BusinessMembershipDTO(business_id=principal.user_id, role=OWNER)
+    granted = [
+        BusinessMembershipDTO(business_id=m.business_id, role=m.role)
+        for m in repo.list_memberships(session, user_id=principal.user_id)
+    ]
+    return [own, *granted]
+
+
+@app.post("/api/businesses/{business_id}/members")
+def add_member(
+    business_id: str,
+    req: AddMemberRequest,
+    principal: PrincipalDep,
+    session: SessionDep,
+) -> BusinessMembershipDTO:
+    if not _is_owner(session, user_id=principal.user_id, business_id=business_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the business owner can add members")
+    if req.role not in ROLES:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, f"role must be one of {sorted(ROLES)}"
+        )
+    membership = repo.add_membership(
+        session, user_id=req.user_id, business_id=business_id, role=req.role
+    )
+    return BusinessMembershipDTO(business_id=membership.business_id, role=membership.role)
 
 
 @app.get("/api/runs")
