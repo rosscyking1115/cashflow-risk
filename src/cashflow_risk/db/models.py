@@ -75,6 +75,22 @@ class MembershipRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
+class CompanySignalRow(Base):
+    """Cached Companies House signals for a company number. Shared across tenants
+    (the same company can be a customer of many businesses) — not tenant-private."""
+
+    __tablename__ = "company_signals"
+
+    company_number: Mapped[str] = mapped_column(String, primary_key=True)
+    status: Mapped[str | None] = mapped_column(String, default=None)
+    accounts_overdue: Mapped[bool] = mapped_column(Boolean, default=False)
+    accounts_next_due: Mapped[date | None] = mapped_column(Date, default=None)
+    confirmation_overdue: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_insolvency: Mapped[bool] = mapped_column(Boolean, default=False)
+    has_charges: Mapped[bool] = mapped_column(Boolean, default=False)
+    refreshed_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
 class InvitationRow(Base):
     """A pending grant of a role on a Business to an email address. It becomes a
     Membership when a signed-in user with that email claims it."""

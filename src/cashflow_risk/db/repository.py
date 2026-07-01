@@ -8,7 +8,7 @@ independent of the transport layer.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -17,9 +17,11 @@ from sqlalchemy.orm import Session
 from cashflow_risk.db.models import (
     AnalysisRunRow,
     BusinessRow,
+    CompanySignalRow,
     InvitationRow,
     MembershipRow,
 )
+from cashflow_risk.enrichment.companies_house import CompanySignals
 
 
 def ensure_business(session: Session, business_id: str, name: str | None = None) -> BusinessRow:
@@ -73,6 +75,36 @@ def get_run(session: Session, *, business_id: str, run_id: str) -> AnalysisRunRo
         AnalysisRunRow.business_id == business_id,
     )
     return session.scalars(stmt).first()
+
+
+def get_company_signals(session: Session, company_number: str) -> CompanySignals | None:
+    row = session.get(CompanySignalRow, company_number)
+    if row is None:
+        return None
+    return CompanySignals(
+        company_number=row.company_number,
+        status=row.status,
+        accounts_overdue=row.accounts_overdue,
+        accounts_next_due=row.accounts_next_due,
+        confirmation_overdue=row.confirmation_overdue,
+        has_insolvency=row.has_insolvency,
+        has_charges=row.has_charges,
+    )
+
+
+def upsert_company_signals(session: Session, signals: CompanySignals) -> None:
+    row = session.get(CompanySignalRow, signals.company_number)
+    if row is None:
+        row = CompanySignalRow(company_number=signals.company_number)
+        session.add(row)
+    row.status = signals.status
+    row.accounts_overdue = signals.accounts_overdue
+    row.accounts_next_due = signals.accounts_next_due
+    row.confirmation_overdue = signals.confirmation_overdue
+    row.has_insolvency = signals.has_insolvency
+    row.has_charges = signals.has_charges
+    row.refreshed_at = datetime.now(UTC)
+    session.commit()
 
 
 def get_business(session: Session, business_id: str) -> BusinessRow | None:

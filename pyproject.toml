@@ -18,6 +18,7 @@ dependencies = [
     "alembic>=1.13",
     "psycopg[binary]>=3.1",
     "openpyxl>=3.1",
+    "httpx>=0.27",
 ]
 
 [dependency-groups]
@@ -28,7 +29,6 @@ dev = [
     "mypy>=1.10",
     "pandas-stubs>=2.2",
     "types-python-dateutil>=2.9",
-    "httpx>=0.27",
 ]
 
 [build-system]
