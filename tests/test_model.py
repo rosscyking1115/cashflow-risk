@@ -49,7 +49,7 @@ def test_predict_proba_is_bounded_and_deterministic() -> None:
     assert len(a) == len(train)
     assert all(0.0 <= p <= 1.0 for p in a)
     assert a == b  # random_state fixed -> reproducible
-    assert len(FEATURE_NAMES) == 6
+    assert len(FEATURE_NAMES) == 12  # 6 history + 6 Companies House
 
 
 def test_model_learns_a_present_signal() -> None:
@@ -66,6 +66,49 @@ def test_single_class_training_falls_back_to_the_base_rate() -> None:
 
     preds = model.predict_proba(all_late[:3])
     assert preds == [1.0, 1.0, 1.0]  # base rate of an all-positive fold
+
+
+def test_model_learns_from_companies_house_signals_alone() -> None:
+    """History features identical everywhere; only the CH signals separate the
+    classes. The fitted model must pick the signal up — this is the mechanism by
+    which real CH data can lift the score past the history-only ceiling."""
+    from cashflow_risk.enrichment.companies_house import CompanySignals
+
+    def signals(number: str, *, distressed: bool) -> CompanySignals:
+        return CompanySignals(
+            company_number=number,
+            status="active",
+            accounts_overdue=distressed,
+            accounts_next_due=None,
+            confirmation_overdue=False,
+            has_insolvency=distressed,
+            has_charges=False,
+        )
+
+    data = []
+    for i in range(200):
+        late = i % 2 == 0
+        base = _ex(late_rate=0.4, label=late, cust=f"C{i}")  # identical features
+        noisy_clean = i % 20 == 0  # a few distressed-but-on-time, so it's not exact
+        data.append(
+            TrainingExample(
+                features=base.features,
+                label=late,
+                signals=signals(f"{i:08d}", distressed=late != noisy_clean),
+            )
+        )
+
+    y = [1 if e.label else 0 for e in data]
+    scores = LatePaymentModel().fit(data).predict_proba(data)
+
+    assert average_precision(y, scores) > prevalence(y) + 0.3
+
+
+def test_examples_without_signals_still_score() -> None:
+    with_sig = _separable(50)
+    # None signals must be handled as "unknown", not crash or coerce to clean
+    scores = LatePaymentModel().fit(with_sig).predict_proba(with_sig[:5])
+    assert len(scores) == 5
 
 
 def test_unfitted_model_and_empty_input() -> None:

@@ -6,12 +6,15 @@ Runs both scorers over identical walk-forward folds on synthetic data, across
 seeds, and prints pooled PR-AUC (with lift over prevalence), top-decile precision,
 calibration, and the cold-start slice — then a Gate-3 verdict.
 
-Honest headline: on this generator the logistic model *ties* the rules baseline
-at the pinned issue-time origin, because leakage-safe issue-time signal is weak by
-construction (latent health is only sparsely estimable; the macro factor is not
-observable at issue time — docs/adr/0002). The infrastructure is what matters: the
-same folds and metrics will register a real win once Companies House distress
-signals and richer history join the features on real data.
+Honest headline: on this generator the fitted model ties or narrowly beats the
+rules baseline, with or without Companies House signals — and the printed
+"ceiling" row shows why. A *perfect* observer of latent health (the oracle, read
+straight from the latent table — allowed in a diagnostic script, never as a model
+feature) only clears prevalence by ~0.10 mean lift on these folds: everything
+else is the contemporaneous macro factor, which is unobservable at issue time
+without leakage (docs/adr/0002). CH signals are a noisy subset of the health
+ceiling, so no scorer can blow past it here. Gate 3 is therefore decided on real
+data (PLAN §8.3); this bake-off proves the pipeline, folds, and metrics work.
 """
 
 from __future__ import annotations
@@ -31,7 +34,7 @@ N_FOLDS = 4
 
 
 def _rules(train: list[TrainingExample], test: list[TrainingExample]) -> list[float]:
-    return [score_late_probability(e.features).probability for e in test]
+    return [score_late_probability(e.features, e.signals).probability for e in test]
 
 
 def _logistic(train: list[TrainingExample], test: list[TrainingExample]) -> list[float]:
@@ -59,36 +62,69 @@ def main() -> None:
     print("-" * 72)
     print("  ".join(f"{c:>{w}}" for c, w in zip(cols, widths, strict=True)))
 
-    rules_lifts: list[float] = []
-    logit_lifts: list[float] = []
+    lifts: dict[str, list[float]] = {}
     for seed in SEEDS:
         cfg = GeneratorConfig(seed=seed, n_customers=30, weeks=52)
         ds = generate_dataset(cfg)
         observed_until = cfg.start + timedelta(days=cfg.weeks * 7)
-        examples = build_training_examples(
-            ds.invoices, horizon_days=HORIZON_DAYS, observed_until=observed_until
-        )
-        folds = rolling_origin_folds(examples, n_folds=N_FOLDS)
 
-        rules = run_backtest(folds, _rules)
-        logit = run_backtest(folds, _logistic)
-        rules_lifts.append(rules.pooled.average_precision - rules.pooled.prevalence)
-        logit_lifts.append(logit.pooled.average_precision - logit.pooled.prevalence)
+        # identical invoices; the only difference is whether CH signals are seen
+        variants = {
+            "": build_training_examples(
+                ds.invoices, horizon_days=HORIZON_DAYS, observed_until=observed_until
+            ),
+            "+CH": build_training_examples(
+                ds.invoices,
+                horizon_days=HORIZON_DAYS,
+                observed_until=observed_until,
+                signals=ds.company_signals,
+            ),
+        }
+
+        # the health oracle: the generator's own latent truth, as an upper bound
+        # on what any health-proxy (CH included) could ever extract from these folds
+        health = {
+            str(row["invoice_id"]): float(row["customer_health"])
+            for _, row in ds.latent.iterrows()
+        }
+
+        def _oracle(
+            train: list[TrainingExample],
+            test: list[TrainingExample],
+            health: dict[str, float] = health,  # bind per seed (B023)
+        ) -> list[float]:
+            return [1.0 - health[e.features.invoice_id] for e in test]
 
         print(f"seed {seed}:")
-        print(_row("rules", rules))
-        print(_row("logistic", logit))
+        for suffix, examples in variants.items():
+            folds = rolling_origin_folds(examples, n_folds=N_FOLDS)
+            for name, scorer in (("rules", _rules), ("logistic", _logistic)):
+                result = run_backtest(folds, scorer)
+                key = name + suffix
+                lift = result.pooled.average_precision - result.pooled.prevalence
+                lifts.setdefault(key, []).append(lift)
+                print(_row(key, result))
+        ceiling = run_backtest(rolling_origin_folds(variants[""], n_folds=N_FOLDS), _oracle)
+        lifts.setdefault("ceiling", []).append(
+            ceiling.pooled.average_precision - ceiling.pooled.prevalence
+        )
+        print(_row("ceiling", ceiling))
 
     print("-" * 72)
-    mean_rules = sum(rules_lifts) / len(rules_lifts)
-    mean_logit = sum(logit_lifts) / len(logit_lifts)
-    print(f"mean PR-AUC lift over prevalence — rules {mean_rules:+.3f}, logistic {mean_logit:+.3f}")
-    verdict = "PASS" if mean_logit - mean_rules >= 0.10 else "NOT MET"
+    means = {k: sum(v) / len(v) for k, v in lifts.items()}
     print(
-        f"\nGate 3 (logistic beats rules by >=0.10 pooled PR-AUC lift): {verdict}.\n"
-        "Expected on synthetic data — issue-time signal is weak by construction. The\n"
-        "harness is ready to register a win once real Companies House distress signals\n"
-        "and richer history join the features.\n"
+        "mean PR-AUC lift over prevalence — "
+        + ", ".join(f"{k} {v:+.3f}" for k, v in means.items())
+    )
+    margin = means["logistic+CH"] - means["rules+CH"]
+    verdict = "PASS" if margin >= 0.10 else "NOT MET"
+    print(
+        f"\nGate 3 (logistic+CH beats rules+CH by >=0.10 pooled PR-AUC lift): "
+        f"{verdict} (margin {margin:+.3f}).\n"
+        f"Context: the health-oracle ceiling is {means['ceiling']:+.3f} mean lift — the\n"
+        "most ANY health-proxy (CH included) can extract from these folds; the rest\n"
+        "of the signal is the issue-time-unobservable macro factor. Gate 3 is decided\n"
+        "on real data; synthetic numbers are pipeline checks, not claims.\n"
     )
 
 

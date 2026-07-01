@@ -22,11 +22,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from cashflow_risk.features.store import InvoiceFeatures
 from cashflow_risk.risk.dataset import TrainingExample
 
 # Leakage-safe, as-of-issue features. days_overdue_now is omitted: at the issue
-# origin it is always 0 (zero variance), so it carries nothing here.
+# origin it is always 0 (zero variance), so it carries nothing here. The ch_*
+# block is the Companies House view — ch_known separates "no signals available"
+# (sole trader / unmatched) from "signals present and clean", so absence is
+# never mistaken for health.
 FEATURE_NAMES = (
     "customer_late_rate",
     "customer_avg_overdue",
@@ -34,11 +36,18 @@ FEATURE_NAMES = (
     "log_prior_count",
     "is_cold_start",
     "log_amount",
+    "ch_known",
+    "ch_accounts_overdue",
+    "ch_confirmation_overdue",
+    "ch_has_insolvency",
+    "ch_has_charges",
+    "ch_status_not_active",
 )
 
 
-def _feature_row(f: InvoiceFeatures) -> list[float]:
-    return [
+def _feature_row(e: TrainingExample) -> list[float]:
+    f = e.features
+    row = [
         f.customer_late_rate,
         f.customer_avg_overdue,
         float(f.terms_days),
@@ -46,12 +55,25 @@ def _feature_row(f: InvoiceFeatures) -> list[float]:
         1.0 if f.is_cold_start else 0.0,
         math.log1p(f.amount),
     ]
+    s = e.signals
+    if s is None:
+        row += [0.0] * 6
+    else:
+        row += [
+            1.0,
+            1.0 if s.accounts_overdue else 0.0,
+            1.0 if s.confirmation_overdue else 0.0,
+            1.0 if s.has_insolvency else 0.0,
+            1.0 if s.has_charges else 0.0,
+            1.0 if s.status is not None and s.status != "active" else 0.0,
+        ]
+    return row
 
 
 def _design_matrix(examples: Sequence[TrainingExample]) -> np.ndarray:
     if not examples:
         return np.empty((0, len(FEATURE_NAMES)))
-    return np.array([_feature_row(e.features) for e in examples], dtype=float)
+    return np.array([_feature_row(e) for e in examples], dtype=float)
 
 
 class LatePaymentModel:

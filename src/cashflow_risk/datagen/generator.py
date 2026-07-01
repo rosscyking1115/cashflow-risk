@@ -10,11 +10,16 @@ Built from a **latent mechanism the model is never given** (see
 - payment delays are drawn from a heavy-tailed (lognormal) distribution, more
   variable for lower-health customers (heteroscedastic);
 - Customer sizes follow a power law, so receivables concentrate in a few names;
-- invoices whose payment date falls past the horizon are left unpaid (censored).
+- invoices whose payment date falls past the horizon are left unpaid (censored);
+- a fraction of customers are incorporated (limited companies): their invoices
+  carry a company number, and synthetic Companies House signals are derived from
+  latent health *plus noise* — a partial, public-register observation of health,
+  which is exactly what real CH data is to real payment behaviour.
 
 The latent truth (health, macro, draw probabilities) is returned in a *separate*
 ``latent`` table for analysis and generator validation — it must never be fed to
-a model as a feature.
+a model as a feature. Signal randomness comes from its own rng, so the invoice
+stream is identical with signals on or off (clean A/B for bake-offs).
 """
 
 from __future__ import annotations
@@ -27,6 +32,7 @@ import numpy as np
 import pandas as pd
 
 from cashflow_risk.domain import Business, Customer, Invoice, InvoiceStatus
+from cashflow_risk.enrichment.companies_house import CompanySignals
 
 _TERMS = np.array([14, 30, 60])
 _TERMS_PROBS = np.array([0.2, 0.6, 0.2])
@@ -45,6 +51,7 @@ class GeneratorConfig:
     mean_invoice_amount: float = 2500.0
     pareto_shape: float = 1.5  # smaller => more customer concentration
     horizon: date | None = None  # censoring point; defaults to start + weeks
+    incorporated_frac: float = 0.6  # fraction of customers that are ltd companies
 
 
 @dataclass(frozen=True)
@@ -52,13 +59,34 @@ class SyntheticDataset:
     """A generated Business with its Customers and Invoices.
 
     ``latent`` holds the ground-truth generative variables (per invoice). It is
-    for analysis only and must not be used as model features.
+    for analysis only and must not be used as model features. ``company_signals``
+    maps an incorporated customer's company number to its synthetic Companies
+    House signals — a *noisy* observation of latent health that models may see.
     """
 
     business: Business
     customers: list[Customer]
     invoices: list[Invoice]
     latent: pd.DataFrame
+    company_signals: dict[str, CompanySignals]
+
+
+def _synthetic_signals(rng: np.random.Generator, number: str, health: float) -> CompanySignals:
+    """Companies House signals as a noisy function of latent health.
+
+    Distress probabilities fall with health, and every field is an independent
+    draw — the signals *inform about* health without revealing it, mirroring how
+    real filings relate to real financial trouble.
+    """
+    return CompanySignals(
+        company_number=number,
+        status="active",
+        accounts_overdue=bool(rng.random() < np.clip(0.75 - 0.9 * health, 0.03, 0.85)),
+        accounts_next_due=None,
+        confirmation_overdue=bool(rng.random() < np.clip(0.5 - 0.6 * health, 0.02, 0.6)),
+        has_insolvency=bool(rng.random() < max(0.0, 0.35 - 0.7 * health)),
+        has_charges=bool(rng.random() < 0.15 + 0.25 * (1.0 - health)),
+    )
 
 
 def _macro_series(rng: np.random.Generator, weeks: int) -> np.ndarray:
@@ -96,6 +124,18 @@ def generate_dataset(config: GeneratorConfig) -> SyntheticDataset:
     ]
 
     macro = _macro_series(rng, config.weeks)
+
+    # --- Companies House world (separate rng: the invoice stream above and below
+    # is bit-identical whether signals are on or off — a clean A/B) ---
+    rng_signals = np.random.default_rng([config.seed, 813])
+    incorporated = rng_signals.random(n) < config.incorporated_frac
+    company_numbers: dict[int, str] = {
+        i: f"{10000000 + i:08d}" for i in range(n) if incorporated[i]
+    }
+    company_signals = {
+        number: _synthetic_signals(rng_signals, number, float(health[i]))
+        for i, number in company_numbers.items()
+    }
 
     invoices: list[Invoice] = []
     latent_rows: list[dict[str, object]] = []
@@ -138,6 +178,7 @@ def generate_dataset(config: GeneratorConfig) -> SyntheticDataset:
                     paid_date=pay_date,
                     amount_paid=amount_dec,
                     status=InvoiceStatus.PAID,
+                    company_number=company_numbers.get(c),
                 )
                 paid = True
             else:
@@ -149,6 +190,7 @@ def generate_dataset(config: GeneratorConfig) -> SyntheticDataset:
                     issue_date=issue,
                     due_date=due,
                     status=InvoiceStatus.OPEN,
+                    company_number=company_numbers.get(c),
                 )
                 paid = False
 
@@ -169,5 +211,9 @@ def generate_dataset(config: GeneratorConfig) -> SyntheticDataset:
 
     latent = pd.DataFrame(latent_rows)
     return SyntheticDataset(
-        business=business, customers=customers, invoices=invoices, latent=latent
+        business=business,
+        customers=customers,
+        invoices=invoices,
+        latent=latent,
+        company_signals=company_signals,
     )

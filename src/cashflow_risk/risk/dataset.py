@@ -12,21 +12,29 @@ scope — and never consults an invoice's eventual payment to build its features
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
 
 from cashflow_risk.domain import Invoice
+from cashflow_risk.enrichment.companies_house import CompanySignals
 from cashflow_risk.features.store import InvoiceFeatures, build_invoice_features
 from cashflow_risk.risk.label import late_label
 
 
 @dataclass(frozen=True)
 class TrainingExample:
-    """One invoice's as-of-issue features paired with its resolved late label."""
+    """One invoice's as-of-issue features paired with its resolved late label.
+
+    ``signals`` are the customer's Companies House signals when it is an
+    incorporated company we can match (None for sole traders / unmatched). On
+    real data, only use signals observed at or before the prediction time — the
+    daily refresh worker is what accumulates that history.
+    """
 
     features: InvoiceFeatures
     label: bool
+    signals: CompanySignals | None = None
 
 
 def build_training_examples(
@@ -35,6 +43,7 @@ def build_training_examples(
     horizon_days: int,
     days_threshold: int = 0,
     observed_until: date | None = None,
+    signals: Mapping[str, CompanySignals] | None = None,
 ) -> list[TrainingExample]:
     """Build one leakage-safe, labelled example per invoice.
 
@@ -65,10 +74,14 @@ def build_training_examples(
             features = as_of_features.get(inv.id)
             if features is None:  # not open at its own issue date (shouldn't happen)
                 continue
+            company_signals = None
+            if signals is not None and features.company_number is not None:
+                company_signals = signals.get(features.company_number)
             examples.append(
                 TrainingExample(
                     features=features,
                     label=late_label(inv, horizon=horizon, days_threshold=days_threshold),
+                    signals=company_signals,
                 )
             )
     return examples

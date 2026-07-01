@@ -72,6 +72,22 @@ def test_observed_until_drops_examples_whose_label_is_not_yet_resolvable() -> No
     assert {e.features.invoice_id for e in examples} == {"EARLY"}
 
 
+def test_signals_are_attached_by_company_number() -> None:
+    from cashflow_risk.enrichment.companies_house import CompanySignals
+
+    ltd = _inv("A", "C1", issue=date(2026, 1, 1), due=date(2026, 1, 31), paid=date(2026, 1, 20))
+    ltd = ltd.model_copy(update={"company_number": "12345678"})
+    sole = _inv("B", "C2", issue=date(2026, 1, 1), due=date(2026, 1, 31), paid=date(2026, 1, 20))
+    signals = {"12345678": CompanySignals("12345678", "active", True, None, False, True, False)}
+
+    examples = build_training_examples([ltd, sole], horizon_days=120, signals=signals)
+    by_id = {e.features.invoice_id: e for e in examples}
+
+    assert by_id["A"].signals is not None
+    assert by_id["A"].signals.has_insolvency is True
+    assert by_id["B"].signals is None  # sole trader — never enriched
+
+
 def test_harness_detects_a_latent_signal_it_should_beat_prevalence() -> None:
     # The generator's latent p_late is the oracle score. On observable examples it
     # must clear prevalence by a wide margin — proving the label builder + metric
