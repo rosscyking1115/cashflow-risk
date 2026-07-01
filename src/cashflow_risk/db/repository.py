@@ -14,7 +14,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from cashflow_risk.db.models import AnalysisRunRow, BusinessRow, MembershipRow
+from cashflow_risk.db.models import (
+    AnalysisRunRow,
+    BusinessRow,
+    InvitationRow,
+    MembershipRow,
+)
 
 
 def ensure_business(session: Session, business_id: str, name: str | None = None) -> BusinessRow:
@@ -102,3 +107,44 @@ def add_membership(
     session.commit()
     session.refresh(membership)
     return membership
+
+
+def create_invitation(
+    session: Session, *, email: str, business_id: str, role: str
+) -> InvitationRow:
+    ensure_business(session, business_id)
+    session.flush()  # insert the Business before the invitation (FK on Postgres)
+    stmt = select(InvitationRow).where(
+        InvitationRow.email == email, InvitationRow.business_id == business_id
+    )
+    existing = session.scalars(stmt).first()
+    if existing is not None:
+        existing.role = role
+        session.commit()
+        return existing
+    invitation = InvitationRow(email=email, business_id=business_id, role=role)
+    session.add(invitation)
+    session.commit()
+    session.refresh(invitation)
+    return invitation
+
+
+def list_invitations(session: Session, *, business_id: str) -> list[InvitationRow]:
+    stmt = (
+        select(InvitationRow)
+        .where(InvitationRow.business_id == business_id)
+        .order_by(InvitationRow.created_at)
+    )
+    return list(session.scalars(stmt))
+
+
+def claim_invitations(session: Session, *, user_id: str, email: str) -> None:
+    """Turn any pending invitations for ``email`` into memberships for ``user_id``."""
+    invitations = list(session.scalars(select(InvitationRow).where(InvitationRow.email == email)))
+    for invitation in invitations:
+        add_membership(
+            session, user_id=user_id, business_id=invitation.business_id, role=invitation.role
+        )
+        session.delete(invitation)
+    if invitations:
+        session.commit()

@@ -98,6 +98,16 @@ class AddMemberRequest(BaseModel):
     role: str
 
 
+class InvitationRequest(BaseModel):
+    email: str
+    role: str
+
+
+class InvitationDTO(BaseModel):
+    email: str
+    role: str
+
+
 class RunSummary(BaseModel):
     """A row in a Business's analysis history."""
 

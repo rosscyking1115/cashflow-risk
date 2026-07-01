@@ -44,6 +44,8 @@ from cashflow_risk.api.schemas import (
     AddMemberRequest,
     AnalysisResponse,
     BusinessMembershipDTO,
+    InvitationDTO,
+    InvitationRequest,
     IssueDTO,
     RunSummary,
 )
@@ -202,6 +204,9 @@ def _is_owner(session: Session, *, user_id: str, business_id: str) -> bool:
 
 @app.get("/api/businesses")
 def list_businesses(principal: PrincipalDep, session: SessionDep) -> list[BusinessMembershipDTO]:
+    if principal.email:
+        # accept any invitations sent to this user's email
+        repo.claim_invitations(session, user_id=principal.user_id, email=principal.email.lower())
     own = BusinessMembershipDTO(business_id=principal.user_id, role=OWNER)
     granted = [
         BusinessMembershipDTO(business_id=m.business_id, role=m.role)
@@ -227,6 +232,39 @@ def add_member(
         session, user_id=req.user_id, business_id=business_id, role=req.role
     )
     return BusinessMembershipDTO(business_id=membership.business_id, role=membership.role)
+
+
+@app.post("/api/businesses/{business_id}/invitations")
+def invite_member(
+    business_id: str,
+    req: InvitationRequest,
+    principal: PrincipalDep,
+    session: SessionDep,
+) -> InvitationDTO:
+    if not _is_owner(session, user_id=principal.user_id, business_id=business_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the business owner can invite")
+    if req.role not in ROLES:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, f"role must be one of {sorted(ROLES)}"
+        )
+    invitation = repo.create_invitation(
+        session, email=req.email.strip().lower(), business_id=business_id, role=req.role
+    )
+    return InvitationDTO(email=invitation.email, role=invitation.role)
+
+
+@app.get("/api/businesses/{business_id}/invitations")
+def list_invitations(
+    business_id: str, principal: PrincipalDep, session: SessionDep
+) -> list[InvitationDTO]:
+    if not _is_owner(session, user_id=principal.user_id, business_id=business_id):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Only the business owner can view invitations"
+        )
+    return [
+        InvitationDTO(email=i.email, role=i.role)
+        for i in repo.list_invitations(session, business_id=business_id)
+    ]
 
 
 @app.get("/api/runs")

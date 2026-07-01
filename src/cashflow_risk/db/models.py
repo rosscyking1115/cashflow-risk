@@ -73,3 +73,19 @@ class MembershipRow(Base):
     )
     role: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class InvitationRow(Base):
+    """A pending grant of a role on a Business to an email address. It becomes a
+    Membership when a signed-in user with that email claims it."""
+
+    __tablename__ = "invitations"
+    __table_args__ = (UniqueConstraint("email", "business_id", name="uq_invitation"),)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    email: Mapped[str] = mapped_column(String, index=True)
+    business_id: Mapped[str] = mapped_column(
+        String, ForeignKey("businesses.id"), index=True, nullable=False
+    )
+    role: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)

@@ -19,15 +19,16 @@ CSV = (
 )
 
 
-def _token(user: str) -> str:
+def _token(user: str, email: str | None = None) -> str:
     # own business id == user id, matching the production (Clerk) model
     return mint_token(
-        Principal(user_id=user, business_id=user, email=f"{user}@x.co"), secret=jwt_secret()
+        Principal(user_id=user, business_id=user, email=email or f"{user}@x.co"),
+        secret=jwt_secret(),
     )
 
 
-def _auth(user: str, acting_as: str | None = None) -> dict[str, str]:
-    headers = {"Authorization": f"Bearer {_token(user)}"}
+def _auth(user: str, acting_as: str | None = None, email: str | None = None) -> dict[str, str]:
+    headers = {"Authorization": f"Bearer {_token(user, email)}"}
     if acting_as:
         headers["X-Business-Id"] = acting_as
     return headers
@@ -91,3 +92,33 @@ def test_list_businesses_shows_own_and_granted() -> None:
 
     assert roles["acct5"] == "owner"  # their own business
     assert roles["owner5"] == "accountant"  # access granted by owner5
+
+
+def test_invitation_by_email_is_claimed_on_login() -> None:
+    # owner invites an accountant by email (mixed case, to check normalisation)
+    invited = client.post(
+        "/api/businesses/owner6/invitations",
+        json={"email": "Book.Keeper@Firm.com", "role": "accountant"},
+        headers=_auth("owner6"),
+    )
+    assert invited.status_code == 200
+
+    # the invited person signs in (matching email) and lists businesses -> claimed
+    acct = _auth("acct6", email="book.keeper@firm.com")
+    businesses = client.get("/api/businesses", headers=acct).json()
+    roles = {b["business_id"]: b["role"] for b in businesses}
+    assert roles.get("owner6") == "accountant"
+
+    # and can now read owner6's data
+    reading = _auth("acct6", acting_as="owner6", email="book.keeper@firm.com")
+    assert client.get("/api/runs", headers=reading).status_code == 200
+
+
+def test_only_an_owner_can_invite() -> None:
+    _grant("owner7", "acct7", "accountant")
+    refused = client.post(
+        "/api/businesses/owner7/invitations",
+        json={"email": "x@y.com", "role": "accountant"},
+        headers=_auth("acct7"),
+    )
+    assert refused.status_code == 403
