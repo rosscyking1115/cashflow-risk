@@ -58,6 +58,20 @@ declare global {
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
+// The business the user is currently acting on (their own by default, or a
+// client's business they've been granted access to). Sent as X-Business-Id.
+let activeBusinessId: string | null = null;
+
+export function setActiveBusiness(id: string | null): void {
+  activeBusinessId = id;
+}
+
+function authHeaders(token: string): Record<string, string> {
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  if (activeBusinessId) headers["X-Business-Id"] = activeBusinessId;
+  return headers;
+}
+
 // Free-tier servers sleep after idle and can take ~a minute to wake. Time out
 // rather than hang forever, with a message that explains what's happening.
 async function timedFetch(url: string, init?: RequestInit, ms = 90_000): Promise<Response> {
@@ -129,7 +143,7 @@ export async function uploadInvoices(
     await timedFetch(`${BASE}/api/analyze`, {
       method: "POST",
       body: form,
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
     }),
   );
 }
@@ -145,7 +159,7 @@ export interface RunSummary {
 export async function fetchRuns(): Promise<RunSummary[]> {
   const token = await authToken();
   const res = await timedFetch(`${BASE}/api/runs`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(`Could not load history (${res.status}).`);
   return (await res.json()) as RunSummary[];
@@ -155,7 +169,7 @@ export async function fetchRun(id: string): Promise<Analysis> {
   const token = await authToken();
   return asAnalysis(
     await timedFetch(`${BASE}/api/runs/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
     }),
   );
 }
@@ -163,7 +177,7 @@ export async function fetchRun(id: string): Promise<Analysis> {
 export async function downloadRunXlsx(id: string): Promise<void> {
   const token = await authToken();
   const res = await timedFetch(`${BASE}/api/runs/${id}/export.xlsx`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(`Export failed (${res.status}).`);
   const url = URL.createObjectURL(await res.blob());
@@ -174,4 +188,30 @@ export async function downloadRunXlsx(id: string): Promise<void> {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+export interface Business {
+  business_id: string;
+  role: string;
+}
+
+export async function fetchBusinesses(): Promise<Business[]> {
+  const token = await authToken();
+  const res = await timedFetch(`${BASE}/api/businesses`, { headers: authHeaders(token) });
+  if (!res.ok) throw new Error(`Could not load businesses (${res.status}).`);
+  return (await res.json()) as Business[];
+}
+
+export async function inviteMember(
+  businessId: string,
+  email: string,
+  role: string,
+): Promise<void> {
+  const token = await authToken();
+  const res = await timedFetch(`${BASE}/api/businesses/${businessId}/invitations`, {
+    method: "POST",
+    headers: { ...authHeaders(token), "Content-Type": "application/json" },
+    body: JSON.stringify({ email, role }),
+  });
+  if (!res.ok) throw new Error(`Invite failed (${res.status}).`);
 }

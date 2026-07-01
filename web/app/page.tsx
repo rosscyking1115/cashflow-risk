@@ -3,15 +3,20 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   type Analysis,
+  type Business,
   type RunSummary,
   downloadRunXlsx,
+  fetchBusinesses,
   fetchDemo,
   fetchRun,
   fetchRuns,
+  inviteMember,
+  setActiveBusiness as selectBusiness,
   uploadInvoices,
 } from "@/lib/api";
 import { ActionList } from "@/components/ActionList";
 import { AuthArea } from "@/components/AuthArea";
+import { BusinessBar } from "@/components/BusinessBar";
 import { CashInstrument } from "@/components/CashInstrument";
 import { DataIssues } from "@/components/DataIssues";
 import { HistoryPanel } from "@/components/HistoryPanel";
@@ -25,8 +30,11 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [slow, setSlow] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   // null = history unavailable (signed out / demo); [] = signed in, none yet.
   const [runs, setRuns] = useState<RunSummary[] | null>(null);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [activeBusiness, setActiveBusiness] = useState<string | null>(null);
 
   const load = useCallback(async (request: Promise<Analysis>) => {
     setLoading(true);
@@ -52,16 +60,49 @@ export default function Page() {
     }
   }, []);
 
+  const refreshBusinesses = useCallback(async () => {
+    try {
+      const list = await fetchBusinesses();
+      setBusinesses(list);
+      if (list.length > 0) {
+        selectBusiness(list[0].business_id);
+        setActiveBusiness(list[0].business_id);
+      }
+    } catch {
+      setBusinesses([]); // signed out / demo
+    }
+  }, []);
+
   useEffect(() => {
     void (async () => {
       await load(fetchDemo());
+      await refreshBusinesses();
       await refreshHistory();
     })();
-  }, [load, refreshHistory]);
+  }, [load, refreshBusinesses, refreshHistory]);
 
   const handleUpload = async (file: File, opening: number, reserve: number) => {
     await load(uploadInvoices(file, opening, reserve));
     await refreshHistory();
+  };
+
+  const handleSwitch = async (id: string) => {
+    selectBusiness(id);
+    setActiveBusiness(id);
+    setNotice(null);
+    const list = await fetchRuns().catch(() => [] as RunSummary[]);
+    setRuns(list);
+    if (list.length > 0) await load(fetchRun(list[0].id));
+  };
+
+  const handleInvite = async (email: string) => {
+    if (!activeBusiness) return;
+    try {
+      await inviteMember(activeBusiness, email, "accountant");
+      setNotice(`Invitation sent to ${email}. They'll get access when they sign in.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Invite failed.");
+    }
   };
 
   const handleExport = async (runId: string) => {
@@ -71,6 +112,9 @@ export default function Page() {
       setError(e instanceof Error ? e.message : "Export failed.");
     }
   };
+
+  const activeRole = businesses.find((b) => b.business_id === activeBusiness)?.role ?? "owner";
+  const canUpload = activeRole === "owner";
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-8">
@@ -84,10 +128,32 @@ export default function Page() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <ModeBar busy={loading} onDemo={() => load(fetchDemo())} onUpload={handleUpload} />
+          <ModeBar
+            busy={loading}
+            canUpload={canUpload}
+            onDemo={() => load(fetchDemo())}
+            onUpload={handleUpload}
+          />
           {clerkEnabled && <AuthArea />}
         </div>
       </header>
+
+      {clerkEnabled && businesses.length > 0 && (
+        <div className="mt-4">
+          <BusinessBar
+            businesses={businesses}
+            activeId={activeBusiness}
+            onSwitch={handleSwitch}
+            onInvite={handleInvite}
+          />
+        </div>
+      )}
+
+      {notice && (
+        <div className="mt-4 rounded-xl border border-low/40 bg-low-soft p-4">
+          <p className="text-sm text-low">{notice}</p>
+        </div>
+      )}
 
       {slow && (
         <div className="mt-6 rounded-xl border border-hairline bg-surface p-4">

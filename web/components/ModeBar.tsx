@@ -6,9 +6,10 @@ interface Props {
   onDemo: () => void;
   onUpload: (file: File, openingBalance: number, minimumReserve: number) => void;
   busy: boolean;
+  canUpload?: boolean;
 }
 
-export function ModeBar({ onDemo, onUpload, busy }: Props) {
+export function ModeBar({ onDemo, onUpload, busy, canUpload = true }: Props) {
   const [opening, setOpening] = useState(10000);
   const [reserve, setReserve] = useState(6000);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -52,7 +53,8 @@ export function ModeBar({ onDemo, onUpload, busy }: Props) {
       />
       <button
         onClick={() => fileRef.current?.click()}
-        disabled={busy}
+        disabled={busy || !canUpload}
+        title={canUpload ? undefined : "Read-only access to this business"}
         className="rounded-md border border-accent px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
       >
         Invoices CSV
