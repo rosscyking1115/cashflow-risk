@@ -40,6 +40,10 @@ services:
       # Companies House REST API key — enables customer risk enrichment.
       - key: COMPANIES_HOUSE_API_KEY
         sync: false
+      # Sentry error monitoring (optional). PII-scrubbed: no bodies, no locals,
+      # no financial fields — see src/cashflow_risk/observability.py.
+      - key: SENTRY_DSN
+        sync: false
 
   # Daily Companies House signal refresh (Docker, same image as the API).
   # Overrides the image CMD with the refresh script — it must NOT run migrations

@@ -79,7 +79,7 @@ accountant read-only).
 | R1 | Wording rules: never "this customer is unsafe"; always "estimate / planning support / review with your accountant" | Built |
 | R2 | Auth (Clerk JWT), **tenant isolation** (every query scoped by business_id), **RBAC** (owner/accountant), tested incl. cross-tenant refusal | Built |
 | R2 | Encryption in transit (HTTPS) + at rest (managed Postgres); secrets in env, generated JWT secret | Built |
-| R3 | No raw financial data in logs; unhandled errors return generic messages; [add a test asserting no financial fields in logs] | Partial — add log-scrubbing test + Sentry `send_default_pii=False` |
+| R3 | No raw financial data in logs; unhandled errors return generic messages; **enforced by test** (`tests/test_observability.py` uploads marker data and asserts none of it reaches any log record); Sentry configured with `send_default_pii=False`, no locals, no request bodies, `before_send` redaction (`src/cashflow_risk/observability.py`) | Built |
 | R4 | **Host in a UK/EEA region** (Render Frankfurt) or put appropriate transfer safeguards (UK IDTA/addendum) in place; record the decision | **To do before real data** |
 | R5 | Processor DPAs signed (Clerk, Render); sub-processor lists reviewed | To do |
 | R6 | Self-serve **export** (Excel/CSV) + **delete** (account/data) controls; documented SAR process | Export built; add delete + SAR process |
@@ -89,8 +89,8 @@ accountant read-only).
 
 - **Residual risk:** [Low / Medium] after measures.
 - **Outcome:** [Proceed / Proceed with conditions]. Conditions to close before
-  processing real customer data: R4 (hosting region / transfer safeguards), R3
-  (log-scrubbing + Sentry PII off), R5 (processor DPAs), R6 (delete flow + SAR),
-  ICO fee paid.
+  processing real customer data: R4 (hosting region / transfer safeguards), R5
+  (processor DPAs), R6 (delete flow + SAR), ICO fee paid. R3 (log-scrubbing +
+  Sentry PII off) is built and test-enforced.
 - **Approved by:** [name, role, date]. **Review:** on any change to data, purpose,
   processors, or the addition of connectors (open banking / accounting APIs).

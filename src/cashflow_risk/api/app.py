@@ -63,6 +63,11 @@ from cashflow_risk.db import get_session, init_db
 from cashflow_risk.db import repository as repo
 from cashflow_risk.enrichment.service import companies_house_api_key, signals_for
 from cashflow_risk.ingestion.csv_import import parse_invoices_csv
+from cashflow_risk.observability import init_sentry
+
+# Before the app object exists, so the SDK's ASGI integration wraps it. A clean
+# no-op without SENTRY_DSN (dev/tests/CI). PII scrubbing: see observability.py.
+init_sentry()
 
 
 def _allowed_origins() -> list[str]:

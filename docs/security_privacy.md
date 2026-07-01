@@ -16,10 +16,16 @@ product. These constraints are not optional.
 
 ## Enforcement (must exist before the first real upload)
 
-- Sentry: `send_default_pii=False` + `before_send` redaction of amounts,
-  counterparty names, invoice/transaction fields.
-- Structured logging with an explicit allowlist of loggable fields.
-- A **test that asserts** no financial fields appear in log/Sentry output.
+- Sentry — **implemented** (`src/cashflow_risk/observability.py`):
+  `send_default_pii=False`, `include_local_variables=False` (stack locals carry
+  ledgers), `max_request_body_size="never"`, and `before_send` redaction of
+  amounts, counterparty names, invoice/company fields, auth headers. Enabled
+  only when `SENTRY_DSN` is set.
+- A **test that asserts** no financial fields appear in log output —
+  **implemented** (`tests/test_observability.py`: uploads marker data, captures
+  all logs at DEBUG, asserts none of it appears; plus scrubber unit tests).
+- Structured logging with an explicit allowlist of loggable fields (future — the
+  log-hygiene test is the current backstop).
 - **CSV-formula-injection defence** on every export: prefix cells beginning with
   `= + - @` (Excel/Sheets opens accountant exports — this is a real vector).
 - File-upload hardening: size/row limits, MIME validation, XLSX parser-bomb
