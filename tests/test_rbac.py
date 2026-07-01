@@ -114,6 +114,22 @@ def test_invitation_by_email_is_claimed_on_login() -> None:
     assert client.get("/api/runs", headers=reading).status_code == 200
 
 
+def test_owner_can_name_their_business() -> None:
+    named = client.put("/api/businesses/owner8", json={"name": "Acme Ltd"}, headers=_auth("owner8"))
+    assert named.status_code == 200
+    assert named.json()["name"] == "Acme Ltd"
+
+    businesses = client.get("/api/businesses", headers=_auth("owner8")).json()
+    own = next(b for b in businesses if b["business_id"] == "owner8")
+    assert own["name"] == "Acme Ltd"
+
+
+def test_non_owner_cannot_rename_a_business() -> None:
+    _grant("owner9", "acct9", "accountant")
+    refused = client.put("/api/businesses/owner9", json={"name": "Hax"}, headers=_auth("acct9"))
+    assert refused.status_code == 403
+
+
 def test_only_an_owner_can_invite() -> None:
     _grant("owner7", "acct7", "accountant")
     refused = client.post(

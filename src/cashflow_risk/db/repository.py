@@ -75,6 +75,17 @@ def get_run(session: Session, *, business_id: str, run_id: str) -> AnalysisRunRo
     return session.scalars(stmt).first()
 
 
+def get_business(session: Session, business_id: str) -> BusinessRow | None:
+    return session.get(BusinessRow, business_id)
+
+
+def set_business_name(session: Session, *, business_id: str, name: str) -> BusinessRow:
+    business = ensure_business(session, business_id, name)
+    business.name = name
+    session.commit()
+    return business
+
+
 def get_membership(session: Session, *, user_id: str, business_id: str) -> MembershipRow | None:
     stmt = select(MembershipRow).where(
         MembershipRow.user_id == user_id,

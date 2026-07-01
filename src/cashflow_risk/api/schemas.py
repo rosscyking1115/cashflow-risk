@@ -91,6 +91,11 @@ class BusinessMembershipDTO(BaseModel):
 
     business_id: str
     role: str
+    name: str | None = None
+
+
+class RenameBusinessRequest(BaseModel):
+    name: str
 
 
 class AddMemberRequest(BaseModel):

@@ -47,6 +47,7 @@ from cashflow_risk.api.schemas import (
     InvitationDTO,
     InvitationRequest,
     IssueDTO,
+    RenameBusinessRequest,
     RunSummary,
 )
 from cashflow_risk.auth import Principal, mint_token, require_principal
@@ -202,17 +203,41 @@ def _is_owner(session: Session, *, user_id: str, business_id: str) -> bool:
     return membership is not None and membership.role == OWNER
 
 
+def _business_name(session: Session, business_id: str) -> str | None:
+    business = repo.get_business(session, business_id)
+    return business.name if business else None
+
+
 @app.get("/api/businesses")
 def list_businesses(principal: PrincipalDep, session: SessionDep) -> list[BusinessMembershipDTO]:
     if principal.email:
         # accept any invitations sent to this user's email
         repo.claim_invitations(session, user_id=principal.user_id, email=principal.email.lower())
-    own = BusinessMembershipDTO(business_id=principal.user_id, role=OWNER)
+    own = BusinessMembershipDTO(
+        business_id=principal.user_id,
+        role=OWNER,
+        name=_business_name(session, principal.user_id),
+    )
     granted = [
-        BusinessMembershipDTO(business_id=m.business_id, role=m.role)
+        BusinessMembershipDTO(
+            business_id=m.business_id, role=m.role, name=_business_name(session, m.business_id)
+        )
         for m in repo.list_memberships(session, user_id=principal.user_id)
     ]
     return [own, *granted]
+
+
+@app.put("/api/businesses/{business_id}")
+def rename_business(
+    business_id: str,
+    req: RenameBusinessRequest,
+    principal: PrincipalDep,
+    session: SessionDep,
+) -> BusinessMembershipDTO:
+    if not _is_owner(session, user_id=principal.user_id, business_id=business_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the business owner can rename it")
+    business = repo.set_business_name(session, business_id=business_id, name=req.name.strip())
+    return BusinessMembershipDTO(business_id=business_id, role=OWNER, name=business.name)
 
 
 @app.post("/api/businesses/{business_id}/members")

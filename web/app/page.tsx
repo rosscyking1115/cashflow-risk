@@ -11,6 +11,7 @@ import {
   fetchRun,
   fetchRuns,
   inviteMember,
+  renameBusiness,
   setActiveBusiness as selectBusiness,
   uploadInvoices,
 } from "@/lib/api";
@@ -105,6 +106,17 @@ export default function Page() {
     }
   };
 
+  const handleRename = async (name: string) => {
+    if (!activeBusiness) return;
+    try {
+      await renameBusiness(activeBusiness, name);
+      await refreshBusinesses();
+      setNotice(`Business renamed to “${name}”.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Rename failed.");
+    }
+  };
+
   const handleExport = async (runId: string) => {
     try {
       await downloadRunXlsx(runId);
@@ -145,6 +157,7 @@ export default function Page() {
             activeId={activeBusiness}
             onSwitch={handleSwitch}
             onInvite={handleInvite}
+            onRename={handleRename}
           />
         </div>
       )}

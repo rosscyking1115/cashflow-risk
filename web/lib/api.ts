@@ -193,6 +193,7 @@ export async function downloadRunXlsx(id: string): Promise<void> {
 export interface Business {
   business_id: string;
   role: string;
+  name: string | null;
 }
 
 export async function fetchBusinesses(): Promise<Business[]> {
@@ -200,6 +201,16 @@ export async function fetchBusinesses(): Promise<Business[]> {
   const res = await timedFetch(`${BASE}/api/businesses`, { headers: authHeaders(token) });
   if (!res.ok) throw new Error(`Could not load businesses (${res.status}).`);
   return (await res.json()) as Business[];
+}
+
+export async function renameBusiness(businessId: string, name: string): Promise<void> {
+  const token = await authToken();
+  const res = await timedFetch(`${BASE}/api/businesses/${businessId}`, {
+    method: "PUT",
+    headers: { ...authHeaders(token), "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error(`Rename failed (${res.status}).`);
 }
 
 export async function inviteMember(
