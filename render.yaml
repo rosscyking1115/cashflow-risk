@@ -41,6 +41,28 @@ services:
       - key: COMPANIES_HOUSE_API_KEY
         sync: false
 
+  # Daily Companies House signal refresh (Docker, same image as the API).
+  # Overrides the image CMD with the refresh script — it must NOT run migrations
+  # (that is the API's job on deploy); it only re-reads/upserts company_signals.
+  # Note: Render Cron Jobs are not offered on the free tier, so this runs on
+  # starter. Schedule is UTC.
+  - type: cron
+    name: cashflow-signals-refresh
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    schedule: "0 3 * * *"
+    dockerCommand: uv run python scripts/refresh_signals.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cashflow-db
+          property: connectionString
+      # Companies House REST API key — required for the refresh to do anything.
+      - key: COMPANIES_HOUSE_API_KEY
+        sync: false
+
   # Next.js dashboard (Node).
   - type: web
     name: cashflow-web

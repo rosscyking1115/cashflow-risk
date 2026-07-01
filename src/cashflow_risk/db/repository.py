@@ -92,6 +92,15 @@ def get_company_signals(session: Session, company_number: str) -> CompanySignals
     )
 
 
+def all_company_numbers(session: Session) -> list[str]:
+    """Every cached company number — the work-list for the daily refresh worker.
+
+    Not tenant-scoped: ``company_signals`` is shared across tenants (the same
+    company can be a customer of many businesses), so the refresh is global.
+    """
+    return list(session.scalars(select(CompanySignalRow.company_number)))
+
+
 def upsert_company_signals(session: Session, signals: CompanySignals) -> None:
     row = session.get(CompanySignalRow, signals.company_number)
     if row is None:
