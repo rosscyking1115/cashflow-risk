@@ -58,6 +58,23 @@ declare global {
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
+// Free-tier servers sleep after idle and can take ~a minute to wake. Time out
+// rather than hang forever, with a message that explains what's happening.
+async function timedFetch(url: string, init?: RequestInit, ms = 90_000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new Error("The server took too long to respond — it may be waking up. Please try again.");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function asAnalysis(res: Response): Promise<Analysis> {
   if (!res.ok) {
     throw new Error(`The analysis service returned ${res.status}. Is the API running?`);
@@ -66,7 +83,7 @@ async function asAnalysis(res: Response): Promise<Analysis> {
 }
 
 export async function fetchDemo(): Promise<Analysis> {
-  return asAnalysis(await fetch(`${BASE}/api/analyze/demo`, { method: "POST" }));
+  return asAnalysis(await timedFetch(`${BASE}/api/analyze/demo`, { method: "POST" }));
 }
 
 // Dev-only token. In production this is replaced by a real login against the IdP;
@@ -75,7 +92,7 @@ let cachedToken: string | null = null;
 
 async function devToken(): Promise<string> {
   if (cachedToken) return cachedToken;
-  const res = await fetch(`${BASE}/api/auth/dev-token`, {
+  const res = await timedFetch(`${BASE}/api/auth/dev-token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: "demo@local", business_id: "demo-co" }),
@@ -109,7 +126,7 @@ export async function uploadInvoices(
   form.append("opening_balance", String(openingBalance));
   form.append("minimum_reserve", String(minimumReserve));
   return asAnalysis(
-    await fetch(`${BASE}/api/analyze`, {
+    await timedFetch(`${BASE}/api/analyze`, {
       method: "POST",
       body: form,
       headers: { Authorization: `Bearer ${token}` },
@@ -127,7 +144,7 @@ export interface RunSummary {
 
 export async function fetchRuns(): Promise<RunSummary[]> {
   const token = await authToken();
-  const res = await fetch(`${BASE}/api/runs`, {
+  const res = await timedFetch(`${BASE}/api/runs`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`Could not load history (${res.status}).`);
@@ -137,7 +154,7 @@ export async function fetchRuns(): Promise<RunSummary[]> {
 export async function fetchRun(id: string): Promise<Analysis> {
   const token = await authToken();
   return asAnalysis(
-    await fetch(`${BASE}/api/runs/${id}`, {
+    await timedFetch(`${BASE}/api/runs/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   );
@@ -145,7 +162,7 @@ export async function fetchRun(id: string): Promise<Analysis> {
 
 export async function downloadRunXlsx(id: string): Promise<void> {
   const token = await authToken();
-  const res = await fetch(`${BASE}/api/runs/${id}/export.xlsx`, {
+  const res = await timedFetch(`${BASE}/api/runs/${id}/export.xlsx`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(`Export failed (${res.status}).`);

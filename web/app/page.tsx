@@ -23,6 +23,7 @@ import { clerkEnabled } from "@/lib/clerk";
 export default function Page() {
   const [data, setData] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
+  const [slow, setSlow] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // null = history unavailable (signed out / demo); [] = signed in, none yet.
   const [runs, setRuns] = useState<RunSummary[] | null>(null);
@@ -30,11 +31,15 @@ export default function Page() {
   const load = useCallback(async (request: Promise<Analysis>) => {
     setLoading(true);
     setError(null);
+    setSlow(false);
+    const slowTimer = setTimeout(() => setSlow(true), 4000);
     try {
       setData(await request);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
+      clearTimeout(slowTimer);
+      setSlow(false);
       setLoading(false);
     }
   }, []);
@@ -83,6 +88,15 @@ export default function Page() {
           {clerkEnabled && <AuthArea />}
         </div>
       </header>
+
+      {slow && (
+        <div className="mt-6 rounded-xl border border-hairline bg-surface p-4">
+          <p className="font-mono text-sm text-muted">
+            Waking the server — the free tier sleeps after a while, so the first
+            request can take up to a minute…
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="mt-6 rounded-xl border border-high/30 bg-high-soft p-5">
