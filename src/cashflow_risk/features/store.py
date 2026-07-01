@@ -31,6 +31,7 @@ class InvoiceFeatures:
     customer_late_rate: float
     customer_avg_overdue: float
     is_cold_start: bool
+    company_number: str | None = None
 
 
 def is_open_at(invoice: Invoice, as_of: date) -> bool:
@@ -79,6 +80,7 @@ def build_invoice_features(
                 customer_late_rate=late_rate,
                 customer_avg_overdue=avg_overdue,
                 is_cold_start=prior_count == 0,
+                company_number=inv.company_number,
             )
         )
     return features

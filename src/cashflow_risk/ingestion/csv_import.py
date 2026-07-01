@@ -35,6 +35,7 @@ _INVOICE_ALIASES: dict[str, set[str]] = {
     "due_date": {"due_date", "due", "payment due", "due date"},
     "paid_date": {"paid_date", "paid", "date paid", "payment date"},
     "status": {"status"},
+    "company_number": {"company_number", "crn", "companies house number", "company no"},
 }
 _INVOICE_REQUIRED = {"invoice_id", "customer_id", "amount", "issue_date", "due_date"}
 
@@ -172,6 +173,7 @@ def parse_invoices_csv(
                 )
 
         status = InvoiceStatus.PAID if paid_date else InvoiceStatus.OPEN
+        company_number = raw.get(cols.get("company_number", ""), "").strip() or None
         try:
             invoice = Invoice(
                 id=invoice_id,
@@ -183,6 +185,7 @@ def parse_invoices_csv(
                 paid_date=paid_date,
                 amount_paid=amount if paid_date else Decimal("0"),
                 status=status,
+                company_number=company_number,
             )
         except ValidationError as exc:
             result.issues.append(RowIssue(n, _first_error(exc)))

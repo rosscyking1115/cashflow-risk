@@ -61,6 +61,7 @@ from cashflow_risk.auth.settings import (
 from cashflow_risk.datagen.generator import GeneratorConfig, generate_dataset
 from cashflow_risk.db import get_session, init_db
 from cashflow_risk.db import repository as repo
+from cashflow_risk.enrichment.service import companies_house_api_key, signals_for
 from cashflow_risk.ingestion.csv_import import parse_invoices_csv
 
 
@@ -174,12 +175,15 @@ async def analyze_upload(
         IssueDTO(row=i.row, message=i.message, field=i.field, severity=i.severity)
         for i in parsed.issues
     ]
+    numbers = [inv.company_number for inv in parsed.records if inv.company_number]
+    signals = signals_for(session, numbers, api_key=companies_house_api_key())
     analysis = analyze_invoices(
         parsed.records,
         as_of=date.today(),
         opening_balance=opening_balance,
         minimum_reserve=minimum_reserve,
         business_id=principal.business_id,  # tenant from token, never client input
+        company_signals=signals,
     )
     response = AnalysisResponse.of(analysis, data_issues=issues)
     response.run_id = uuid4().hex

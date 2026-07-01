@@ -37,6 +37,9 @@ services:
         sync: false
       - key: CLERK_ISSUER
         sync: false
+      # Companies House REST API key — enables customer risk enrichment.
+      - key: COMPANIES_HOUSE_API_KEY
+        sync: false
 
   # Next.js dashboard (Node).
   - type: web

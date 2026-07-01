@@ -13,6 +13,11 @@ import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from cashflow_risk.enrichment.companies_house import (
+    CompanySignals,
+    filing_risk_drivers,
+    filing_risk_logit,
+)
 from cashflow_risk.features.store import InvoiceFeatures
 
 # Interpretable log-odds weights. Tunable; not fitted (this is the rules baseline).
@@ -51,7 +56,9 @@ def _band(p: float) -> str:
     return "low"
 
 
-def score_late_probability(f: InvoiceFeatures) -> RiskScore:
+def score_late_probability(
+    f: InvoiceFeatures, signals: CompanySignals | None = None
+) -> RiskScore:
     logit = _INTERCEPT
     logit += _W_LATE_RATE * f.customer_late_rate
     logit += _W_OVERDUE_NOW * f.days_overdue_now
@@ -59,10 +66,15 @@ def score_late_probability(f: InvoiceFeatures) -> RiskScore:
     logit += _W_LONG_TERMS * max(0, f.terms_days - 30)
     if f.is_cold_start:
         logit += _COLD_START_PENALTY
+    if signals is not None:
+        logit += filing_risk_logit(signals)
 
     probability = _sigmoid(logit)
 
     drivers: list[str] = []
+    # Companies House signals first — they're the strongest, most concrete drivers.
+    if signals is not None:
+        drivers.extend(filing_risk_drivers(signals))
     if f.customer_late_rate > 0:
         drivers.append(
             f"Customer has paid late {f.customer_late_rate:.0%} of the time "
@@ -87,8 +99,19 @@ def score_late_probability(f: InvoiceFeatures) -> RiskScore:
     )
 
 
-def rank_by_cash_at_risk(features: Iterable[InvoiceFeatures]) -> list[RiskScore]:
-    """Score invoices and order them by expected cash at risk, highest first."""
-    scores = [score_late_probability(f) for f in features]
+def rank_by_cash_at_risk(
+    features: Iterable[InvoiceFeatures],
+    company_signals: dict[str, CompanySignals] | None = None,
+) -> list[RiskScore]:
+    """Score invoices and order them by expected cash at risk, highest first.
+
+    ``company_signals`` maps a customer's Companies House number to its signals;
+    an invoice is enriched when its customer's number is present.
+    """
+    signals = company_signals or {}
+    scores = [
+        score_late_probability(f, signals.get(f.company_number) if f.company_number else None)
+        for f in features
+    ]
     scores.sort(key=lambda s: s.cash_at_risk, reverse=True)
     return scores

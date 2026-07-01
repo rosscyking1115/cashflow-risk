@@ -77,3 +77,17 @@ def test_signals_cache_round_trips() -> None:
     updated = CompanySignals("00000006", "dissolved", False, None, False, True, True)
     repo.upsert_company_signals(session, updated)
     assert repo.get_company_signals(session, "00000006") == updated
+
+
+def test_signals_for_reads_cache_and_skips_uncached_without_key() -> None:
+    from cashflow_risk.enrichment.service import signals_for
+
+    session = next(get_session())
+    repo.upsert_company_signals(
+        session, CompanySignals("00000006", "active", True, None, False, False, False)
+    )
+
+    result = signals_for(session, ["00000006", None, "99999999"], api_key=None)
+
+    assert result["00000006"].accounts_overdue is True
+    assert "99999999" not in result  # not cached and no key -> skipped, no error

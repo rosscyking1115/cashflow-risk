@@ -142,6 +142,22 @@ def test_transactions_support_money_in_money_out_columns() -> None:
     assert result.records[1].amount == Decimal("350.00")
 
 
+def test_parses_optional_company_number() -> None:
+    csv_text = textwrap.dedent(
+        """\
+        invoice_id,customer_id,amount,issue_date,due_date,company_number
+        INV-1,Acme Ltd,1000,2026-01-01,2026-01-31,12345678
+        INV-2,Sole Trader,500,2026-01-01,2026-02-01,
+        """
+    )
+
+    result = parse_invoices_csv(csv_text, business_id="biz")
+
+    assert result.ok
+    assert result.records[0].company_number == "12345678"
+    assert result.records[1].company_number is None
+
+
 def test_transactions_without_any_amount_column_is_a_file_error() -> None:
     result = parse_transactions_csv("Date,Description\n01/03/2026,x\n", business_id="biz")
 

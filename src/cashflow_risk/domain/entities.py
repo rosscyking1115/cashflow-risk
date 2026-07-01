@@ -101,6 +101,7 @@ class Invoice(BaseModel):
     paid_date: date | None = None
     amount_paid: Decimal = Decimal("0")
     status: InvoiceStatus = InvoiceStatus.OPEN
+    company_number: str | None = None  # customer's Companies House number, if known
 
     @property
     def outstanding(self) -> Decimal:

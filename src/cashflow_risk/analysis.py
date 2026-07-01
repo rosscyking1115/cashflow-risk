@@ -14,6 +14,7 @@ from datetime import date
 from decimal import Decimal
 
 from cashflow_risk.domain import Bill, Invoice, InvoiceStatus, TaxObligation
+from cashflow_risk.enrichment.companies_house import CompanySignals
 from cashflow_risk.features.store import build_invoice_features, is_open_at
 from cashflow_risk.forecasting.baselines import ForecastRun, forecast_cash
 from cashflow_risk.reporting.action_brief import ActionBrief, build_action_brief
@@ -57,9 +58,10 @@ def analyze_invoices(
     bills: Sequence[Bill] = (),
     obligations: Sequence[TaxObligation] = (),
     horizon_weeks: int = 13,
+    company_signals: dict[str, CompanySignals] | None = None,
 ) -> Analysis:
     features = build_invoice_features(invoices, as_of=as_of)
-    ranked = rank_by_cash_at_risk(features)
+    ranked = rank_by_cash_at_risk(features, company_signals)
 
     forecast = forecast_cash(
         opening_balance=opening_balance,
