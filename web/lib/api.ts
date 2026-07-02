@@ -223,6 +223,22 @@ export async function deleteAccountData(): Promise<void> {
   if (!res.ok) throw new Error(`Delete failed (${res.status}).`);
 }
 
+export interface AuditEvent {
+  action: string;
+  actor_user_id: string;
+  created_at: string;
+  detail: Record<string, unknown> | null;
+}
+
+// The active business's audit trail (who did what, when). Visible to owners
+// and invited accountants alike.
+export async function fetchAuditTrail(): Promise<AuditEvent[]> {
+  const token = await authToken();
+  const res = await timedFetch(`${BASE}/api/audit`, { headers: authHeaders(token) });
+  if (!res.ok) throw new Error(`Could not load the activity log (${res.status}).`);
+  return (await res.json()) as AuditEvent[];
+}
+
 export interface Business {
   business_id: string;
   role: string;

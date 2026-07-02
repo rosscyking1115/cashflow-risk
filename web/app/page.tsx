@@ -8,6 +8,7 @@ import {
   deleteAccountData,
   downloadAccountExport,
   downloadRunXlsx,
+  fetchAuditTrail,
   fetchBusinesses,
   fetchDemo,
   fetchRun,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/api";
 import { AccountControls } from "@/components/AccountControls";
 import { ActionList } from "@/components/ActionList";
+import { AuditTrail } from "@/components/AuditTrail";
 import { AuthArea } from "@/components/AuthArea";
 import { BusinessBar } from "@/components/BusinessBar";
 import { CashInstrument } from "@/components/CashInstrument";
@@ -272,6 +274,8 @@ export default function Page() {
           <footer className="border-t border-hairline pt-4 text-xs leading-relaxed text-muted">
             {data.brief.disclaimer}
           </footer>
+
+          {runs !== null && <AuditTrail onLoad={fetchAuditTrail} />}
 
           {runs !== null && (
             <AccountControls onExport={handleAccountExport} onDelete={handleAccountDelete} />
