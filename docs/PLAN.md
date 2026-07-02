@@ -130,6 +130,8 @@ banking / accounting connectors · LLM-written briefs.
 ### Phase 0 — Validate the problem (gate before any engine work)
 Goal: confirm real demand before building.
 - Write a one-page product brief and a **paper mock-up of the action brief**.
+  → Collateral ready in [phase0/](phase0/): product brief, action-brief mock-up,
+  interview guide (with the Gate 1 rubric), and an interview log template.
 - Interview **5 UK SME owners / freelancers / accountants**. Test the real
   question: *"would this output change a chasing decision you'd make this week?"*
 - Lock the **risk taxonomy** and the **domain model** (`domain-modeling` skill).
