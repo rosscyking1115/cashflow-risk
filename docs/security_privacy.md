@@ -28,8 +28,12 @@ product. These constraints are not optional.
   log-hygiene test is the current backstop).
 - **CSV-formula-injection defence** on every export: prefix cells beginning with
   `= + - @` (Excel/Sheets opens accountant exports — this is a real vector).
-- File-upload hardening: size/row limits, MIME validation, XLSX parser-bomb
-  protection.
+- File-upload hardening — **implemented** (`src/cashflow_risk/api/upload_guard.py`):
+  5 MB size limit enforced while streaming (never buffers an oversized body),
+  50k row limit, content sniffing (zip/xlsx magic bytes and binary content are
+  rejected with a plain-English message; browser MIME headers are not trusted).
+  XLSX uploads are not accepted at all — which is also the parser-bomb defence:
+  no zip/XML parser exists on the upload path.
 - **Auth + tenant isolation — implemented (request layer).** Real uploads
   (`/api/analyze`) require a verified JWT; the tenant `business_id` is taken from
   the token, never from client input, so a caller cannot act as another tenant.

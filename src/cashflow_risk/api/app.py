@@ -50,6 +50,7 @@ from cashflow_risk.api.schemas import (
     RenameBusinessRequest,
     RunSummary,
 )
+from cashflow_risk.api.upload_guard import read_csv_upload
 from cashflow_risk.auth import Principal, mint_token, require_principal
 from cashflow_risk.auth.principal import OWNER, ROLES
 from cashflow_risk.auth.settings import (
@@ -174,7 +175,7 @@ async def analyze_upload(
 ) -> AnalysisResponse:
     if principal.role != OWNER:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Read-only access: only an owner can upload")
-    raw = (await invoices.read()).decode("utf-8-sig", errors="replace")
+    raw = await read_csv_upload(invoices)  # size/row limits + content sniffing
     parsed = parse_invoices_csv(raw, business_id=principal.business_id)
     issues = [
         IssueDTO(row=i.row, message=i.message, field=i.field, severity=i.severity)

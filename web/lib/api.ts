@@ -91,7 +91,13 @@ async function timedFetch(url: string, init?: RequestInit, ms = 90_000): Promise
 
 async function asAnalysis(res: Response): Promise<Analysis> {
   if (!res.ok) {
-    throw new Error(`The analysis service returned ${res.status}. Is the API running?`);
+    // Surface the API's own message when it has one (e.g. upload limits:
+    // "File too large — the limit is 5 MB…") instead of a bare status code.
+    const detail = await res
+      .json()
+      .then((body: { detail?: unknown }) => (typeof body.detail === "string" ? body.detail : null))
+      .catch(() => null);
+    throw new Error(detail ?? `The analysis service returned ${res.status}. Is the API running?`);
   }
   return (await res.json()) as Analysis;
 }
