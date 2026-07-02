@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from cashflow_risk.db.models import (
@@ -188,6 +188,75 @@ def list_invitations(session: Session, *, business_id: str) -> list[InvitationRo
         .order_by(InvitationRow.created_at)
     )
     return list(session.scalars(stmt))
+
+
+def export_account(session: Session, *, user_id: str, email: str | None) -> dict[str, Any]:
+    """Everything held for a user — the data-portability / SAR artifact (DPIA R6).
+
+    Covers their own business (id == user_id): profile, every run with its full
+    payload, memberships they hold elsewhere, members they have granted access
+    to, and invitations they have sent.
+    """
+    business = get_business(session, user_id)
+    members = list(
+        session.scalars(select(MembershipRow).where(MembershipRow.business_id == user_id))
+    )
+    return {
+        "exported_for": {"user_id": user_id, "email": email},
+        "exported_at": datetime.now(UTC).isoformat(),
+        "business": {
+            "id": user_id,
+            "name": business.name if business else None,
+            "created_at": business.created_at.isoformat() if business else None,
+        },
+        "runs": [
+            {
+                "id": r.id,
+                "as_of": r.as_of.isoformat(),
+                "runway_weeks": r.runway_weeks,
+                "has_shortfall": r.has_shortfall,
+                "minimum_reserve": r.minimum_reserve,
+                "created_at": r.created_at.isoformat(),
+                "payload": r.payload,
+            }
+            for r in list_runs(session, business_id=user_id)
+        ],
+        "memberships": [
+            {"business_id": m.business_id, "role": m.role, "created_at": m.created_at.isoformat()}
+            for m in list_memberships(session, user_id=user_id)
+        ],
+        "members": [
+            {"user_id": m.user_id, "role": m.role, "created_at": m.created_at.isoformat()}
+            for m in members
+        ],
+        "invitations_sent": [
+            {"email": i.email, "role": i.role, "created_at": i.created_at.isoformat()}
+            for i in list_invitations(session, business_id=user_id)
+        ],
+    }
+
+
+def delete_account(session: Session, *, user_id: str, email: str | None) -> None:
+    """Erase everything held for a user (DPIA R6: right to erasure). Idempotent.
+
+    Deletes their business's runs, memberships in both directions (access they
+    granted and access they hold), invitations they sent, invitations addressed
+    to their email, and finally the business row. Never touches other tenants;
+    ``company_signals`` stays (public-register data, shared, not personal)."""
+    session.execute(delete(AnalysisRunRow).where(AnalysisRunRow.business_id == user_id))
+    session.execute(
+        delete(MembershipRow).where(
+            or_(MembershipRow.business_id == user_id, MembershipRow.user_id == user_id)
+        )
+    )
+    invitation_filter = InvitationRow.business_id == user_id
+    if email:
+        invitation_filter = or_(invitation_filter, InvitationRow.email == email.lower())
+    session.execute(delete(InvitationRow).where(invitation_filter))
+    business = session.get(BusinessRow, user_id)
+    if business is not None:
+        session.delete(business)
+    session.commit()
 
 
 def claim_invitations(session: Session, *, user_id: str, email: str) -> None:

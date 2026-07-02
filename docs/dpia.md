@@ -82,7 +82,7 @@ accountant read-only).
 | R3 | No raw financial data in logs; unhandled errors return generic messages; **enforced by test** (`tests/test_observability.py` uploads marker data and asserts none of it reaches any log record); Sentry configured with `send_default_pii=False`, no locals, no request bodies, `before_send` redaction (`src/cashflow_risk/observability.py`) | Built |
 | R4 | **Host in a UK/EEA region** (Render Frankfurt) or put appropriate transfer safeguards (UK IDTA/addendum) in place; record the decision | **To do before real data** |
 | R5 | Processor DPAs signed (Clerk, Render); sub-processor lists reviewed | To do |
-| R6 | Self-serve **export** (Excel/CSV) + **delete** (account/data) controls; documented SAR process | Export built; add delete + SAR process |
+| R6 | Self-serve **export** (per-run Excel + full-account JSON via `GET /api/account/export`) + **delete** (`DELETE /api/account`, erases runs/memberships/invitations/business, tested incl. bystander isolation) — both in the dashboard ("Your data"); SAR process documented in the privacy notice (self-serve immediate; email fallback, one-month timescale) | Built |
 | R7 | Every score shows drivers + uncertainty; rectification on request; human always in the loop | Built (explainable scores) |
 
 ## 6. Sign-off & outcome
@@ -90,7 +90,7 @@ accountant read-only).
 - **Residual risk:** [Low / Medium] after measures.
 - **Outcome:** [Proceed / Proceed with conditions]. Conditions to close before
   processing real customer data: R4 (hosting region / transfer safeguards), R5
-  (processor DPAs), R6 (delete flow + SAR), ICO fee paid. R3 (log-scrubbing +
-  Sentry PII off) is built and test-enforced.
+  (processor DPAs), ICO fee paid. R3 (log-scrubbing + Sentry PII off) and R6
+  (export/delete flow + SAR process) are built and test-enforced.
 - **Approved by:** [name, role, date]. **Review:** on any change to data, purpose,
   processors, or the addition of connectors (open banking / accounting APIs).

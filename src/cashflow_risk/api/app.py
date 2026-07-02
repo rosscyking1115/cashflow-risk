@@ -301,6 +301,26 @@ def list_invitations(
     ]
 
 
+@app.get("/api/account/export")
+def export_account(principal: PrincipalDep, session: SessionDep) -> JSONResponse:
+    """Everything we hold for the signed-in user, as a JSON download (DPIA R6:
+    access/portability). Keyed to the *user*, never the switched business."""
+    export = repo.export_account(session, user_id=principal.user_id, email=principal.email)
+    return JSONResponse(
+        content=export,
+        headers={"Content-Disposition": 'attachment; filename="cashflow-account-export.json"'},
+    )
+
+
+@app.delete("/api/account", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(principal: PrincipalDep, session: SessionDep) -> Response:
+    """Erase everything we hold for the signed-in user (DPIA R6: erasure).
+    Keyed to the *user*; an accountant deleting their account never touches a
+    client's business. Their IdP (Clerk) account is deleted separately."""
+    repo.delete_account(session, user_id=principal.user_id, email=principal.email)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @app.get("/api/runs")
 def list_runs(principal: PrincipalDep, session: SessionDep) -> list[RunSummary]:
     rows = repo.list_runs(session, business_id=principal.business_id)

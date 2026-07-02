@@ -190,6 +190,33 @@ export async function downloadRunXlsx(id: string): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+// Everything the service holds for the signed-in user, as a JSON download
+// (data portability / subject access — see docs/privacy-notice.md).
+export async function downloadAccountExport(): Promise<void> {
+  const token = await authToken();
+  const res = await timedFetch(`${BASE}/api/account/export`, { headers: authHeaders(token) });
+  if (!res.ok) throw new Error(`Export failed (${res.status}).`);
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "cashflow-account-export.json";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Erases all stored data for the signed-in user (right to erasure). The
+// sign-in account itself (Clerk) is managed separately via the user menu.
+export async function deleteAccountData(): Promise<void> {
+  const token = await authToken();
+  const res = await timedFetch(`${BASE}/api/account`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error(`Delete failed (${res.status}).`);
+}
+
 export interface Business {
   business_id: string;
   role: string;

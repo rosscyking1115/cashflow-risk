@@ -5,6 +5,8 @@ import {
   type Analysis,
   type Business,
   type RunSummary,
+  deleteAccountData,
+  downloadAccountExport,
   downloadRunXlsx,
   fetchBusinesses,
   fetchDemo,
@@ -15,6 +17,7 @@ import {
   setActiveBusiness as selectBusiness,
   uploadInvoices,
 } from "@/lib/api";
+import { AccountControls } from "@/components/AccountControls";
 import { ActionList } from "@/components/ActionList";
 import { AuthArea } from "@/components/AuthArea";
 import { BusinessBar } from "@/components/BusinessBar";
@@ -122,6 +125,27 @@ export default function Page() {
       await downloadRunXlsx(runId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Export failed.");
+    }
+  };
+
+  const handleAccountExport = async () => {
+    try {
+      await downloadAccountExport();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Export failed.");
+    }
+  };
+
+  const handleAccountDelete = async () => {
+    try {
+      await deleteAccountData();
+      // everything server-side is gone; reset the UI to the signed-in blank slate
+      setRuns([]);
+      setNotice("All your stored data has been deleted.");
+      await refreshBusinesses();
+      await load(fetchDemo());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed.");
     }
   };
 
@@ -248,6 +272,10 @@ export default function Page() {
           <footer className="border-t border-hairline pt-4 text-xs leading-relaxed text-muted">
             {data.brief.disclaimer}
           </footer>
+
+          {runs !== null && (
+            <AccountControls onExport={handleAccountExport} onDelete={handleAccountDelete} />
+          )}
         </div>
       )}
     </main>

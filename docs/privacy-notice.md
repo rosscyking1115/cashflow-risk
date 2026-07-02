@@ -33,7 +33,10 @@ account [+ auto-purge after N months]. You can export or delete your data at any
 time.
 
 **Your rights.** You can access, correct, export, delete, or object to our use of
-your data, and complain to the ICO (ico.org.uk). Email [contact] to exercise these.
+your data, and complain to the ICO (ico.org.uk). Export ("Export my data") and
+deletion ("Delete my data") are self-serve in the dashboard and take effect
+immediately; for anything else — or if you can't sign in — email [contact] and
+we'll respond within one calendar month (UK GDPR subject-access timescale).
 
 **A note on customer data.** If your customers include sole traders (individuals),
 their name and your payment history with them are personal data. We only use your
