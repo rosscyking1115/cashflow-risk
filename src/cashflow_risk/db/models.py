@@ -91,6 +91,26 @@ class CompanySignalRow(Base):
     refreshed_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
+class AuditEventRow(Base):
+    """One recorded action on a Business (PLAN Phase 4: audit log).
+
+    Append-only; tenant-scoped like everything else. ``detail`` holds ids and
+    counts only — never amounts, customer names, or emails (the trail must be
+    safe to show and safe to keep). Erased with the account (right to erasure
+    beats audit retention for a tenant's own trail)."""
+
+    __tablename__ = "audit_events"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    business_id: Mapped[str] = mapped_column(
+        String, ForeignKey("businesses.id"), index=True, nullable=False
+    )
+    actor_user_id: Mapped[str] = mapped_column(String, nullable=False)
+    action: Mapped[str] = mapped_column(String, nullable=False)
+    detail: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
+
+
 class InvitationRow(Base):
     """A pending grant of a role on a Business to an email address. It becomes a
     Membership when a signed-in user with that email claims it."""

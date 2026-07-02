@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from cashflow_risk.db.models import (
     AnalysisRunRow,
+    AuditEventRow,
     BusinessRow,
     CompanySignalRow,
     InvitationRow,
@@ -190,6 +191,35 @@ def list_invitations(session: Session, *, business_id: str) -> list[InvitationRo
     return list(session.scalars(stmt))
 
 
+def record_audit_event(
+    session: Session,
+    *,
+    business_id: str,
+    actor_user_id: str,
+    action: str,
+    detail: dict[str, Any] | None = None,
+) -> None:
+    """Append one audit event. ``detail`` must hold ids/counts only — never
+    amounts, customer names, or emails (see AuditEventRow)."""
+    ensure_business(session, business_id)
+    session.flush()  # Business row before the event (FK on Postgres)
+    session.add(
+        AuditEventRow(
+            business_id=business_id, actor_user_id=actor_user_id, action=action, detail=detail
+        )
+    )
+    session.commit()
+
+
+def list_audit_events(session: Session, *, business_id: str) -> list[AuditEventRow]:
+    stmt = (
+        select(AuditEventRow)
+        .where(AuditEventRow.business_id == business_id)
+        .order_by(AuditEventRow.created_at, AuditEventRow.id)
+    )
+    return list(session.scalars(stmt))
+
+
 def export_account(session: Session, *, user_id: str, email: str | None) -> dict[str, Any]:
     """Everything held for a user — the data-portability / SAR artifact (DPIA R6).
 
@@ -244,6 +274,7 @@ def delete_account(session: Session, *, user_id: str, email: str | None) -> None
     to their email, and finally the business row. Never touches other tenants;
     ``company_signals`` stays (public-register data, shared, not personal)."""
     session.execute(delete(AnalysisRunRow).where(AnalysisRunRow.business_id == user_id))
+    session.execute(delete(AuditEventRow).where(AuditEventRow.business_id == user_id))
     session.execute(
         delete(MembershipRow).where(
             or_(MembershipRow.business_id == user_id, MembershipRow.user_id == user_id)

@@ -43,6 +43,7 @@ from cashflow_risk.api.export import analysis_to_xlsx
 from cashflow_risk.api.schemas import (
     AddMemberRequest,
     AnalysisResponse,
+    AuditEventDTO,
     BusinessMembershipDTO,
     InvitationDTO,
     InvitationRequest,
@@ -203,6 +204,13 @@ async def analyze_upload(
         minimum_reserve=response.minimum_reserve,
         payload=response.model_dump(mode="json"),
     )
+    repo.record_audit_event(
+        session,
+        business_id=principal.business_id,
+        actor_user_id=principal.user_id,
+        action="run.create",
+        detail={"run_id": response.run_id, "rows": len(parsed.records), "issues": len(issues)},
+    )
     return response
 
 
@@ -247,6 +255,12 @@ def rename_business(
     if not _is_owner(session, user_id=principal.user_id, business_id=business_id):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the business owner can rename it")
     business = repo.set_business_name(session, business_id=business_id, name=req.name.strip())
+    repo.record_audit_event(
+        session,
+        business_id=business_id,
+        actor_user_id=principal.user_id,
+        action="business.rename",
+    )
     return BusinessMembershipDTO(business_id=business_id, role=OWNER, name=business.name)
 
 
@@ -266,6 +280,13 @@ def add_member(
     membership = repo.add_membership(
         session, user_id=req.user_id, business_id=business_id, role=req.role
     )
+    repo.record_audit_event(
+        session,
+        business_id=business_id,
+        actor_user_id=principal.user_id,
+        action="member.add",
+        detail={"role": req.role},
+    )
     return BusinessMembershipDTO(business_id=membership.business_id, role=membership.role)
 
 
@@ -284,6 +305,13 @@ def invite_member(
         )
     invitation = repo.create_invitation(
         session, email=req.email.strip().lower(), business_id=business_id, role=req.role
+    )
+    repo.record_audit_event(
+        session,
+        business_id=business_id,
+        actor_user_id=principal.user_id,
+        action="member.invite",
+        detail={"role": req.role},  # deliberately no email in the trail
     )
     return InvitationDTO(email=invitation.email, role=invitation.role)
 
@@ -307,6 +335,12 @@ def export_account(principal: PrincipalDep, session: SessionDep) -> JSONResponse
     """Everything we hold for the signed-in user, as a JSON download (DPIA R6:
     access/portability). Keyed to the *user*, never the switched business."""
     export = repo.export_account(session, user_id=principal.user_id, email=principal.email)
+    repo.record_audit_event(
+        session,
+        business_id=principal.user_id,  # the export is of their own business
+        actor_user_id=principal.user_id,
+        action="account.export",
+    )
     return JSONResponse(
         content=export,
         headers={"Content-Disposition": 'attachment; filename="cashflow-account-export.json"'},
@@ -320,6 +354,21 @@ def delete_account(principal: PrincipalDep, session: SessionDep) -> Response:
     client's business. Their IdP (Clerk) account is deleted separately."""
     repo.delete_account(session, user_id=principal.user_id, email=principal.email)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.get("/api/audit")
+def list_audit(principal: PrincipalDep, session: SessionDep) -> list[AuditEventDTO]:
+    """The active business's audit trail. Anyone with access to the business may
+    read it (owners and invited accountants alike) — that visibility is the point."""
+    return [
+        AuditEventDTO(
+            action=e.action,
+            actor_user_id=e.actor_user_id,
+            created_at=e.created_at,
+            detail=e.detail,
+        )
+        for e in repo.list_audit_events(session, business_id=principal.business_id)
+    ]
 
 
 @app.get("/api/runs")
@@ -354,6 +403,13 @@ def export_run(run_id: str, principal: PrincipalDep, session: SessionDep) -> Res
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Run not found")
     workbook = analysis_to_xlsx(AnalysisResponse.model_validate(row.payload))
+    repo.record_audit_event(
+        session,
+        business_id=principal.business_id,
+        actor_user_id=principal.user_id,
+        action="run.export",
+        detail={"run_id": run_id},
+    )
     return Response(
         content=workbook,
         media_type=_XLSX_MEDIA,

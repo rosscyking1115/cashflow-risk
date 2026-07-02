@@ -123,6 +123,15 @@ class RunSummary(BaseModel):
     created_at: datetime
 
 
+class AuditEventDTO(BaseModel):
+    """One entry of a Business's audit trail — ids/counts only, never values."""
+
+    action: str
+    actor_user_id: str
+    created_at: datetime
+    detail: dict[str, object] | None = None
+
+
 class AnalysisResponse(BaseModel):
     business_id: str
     as_of: date
