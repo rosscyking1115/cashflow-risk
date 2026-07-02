@@ -29,8 +29,8 @@ legitimate interest in computing the risk you asked us to.
 UK/EEA — or state transfer safeguards.]
 
 **How long we keep it.** Your results are kept until you delete them or close your
-account [+ auto-purge after N months]. You can export or delete your data at any
-time.
+account, and analysis results older than 24 months are deleted automatically. You
+can export or delete your data at any time.
 
 **Your rights.** You can access, correct, export, delete, or object to our use of
 your data, and complain to the ICO (ico.org.uk). Export ("Export my data") and

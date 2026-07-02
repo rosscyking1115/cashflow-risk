@@ -9,9 +9,9 @@ independent of the transport layer.
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import delete, or_, select
+from sqlalchemy import CursorResult, delete, or_, select
 from sqlalchemy.orm import Session
 
 from cashflow_risk.db.models import (
@@ -189,6 +189,27 @@ def list_invitations(session: Session, *, business_id: str) -> list[InvitationRo
         .order_by(InvitationRow.created_at)
     )
     return list(session.scalars(stmt))
+
+
+def purge_expired(session: Session, *, cutoff: datetime) -> tuple[int, int]:
+    """Delete analysis runs and audit events created before ``cutoff``.
+
+    The retention purge (privacy notice: results are auto-deleted after the
+    retention period). Purges *results*, never accounts — business rows,
+    memberships, and invitations stay. Returns (runs, events) deleted.
+    """
+    # session.execute() is typed as Result, but DELETE returns a CursorResult
+    # (which carries rowcount) — narrow for mypy.
+    runs = cast(
+        "CursorResult[Any]",
+        session.execute(delete(AnalysisRunRow).where(AnalysisRunRow.created_at < cutoff)),
+    ).rowcount
+    events = cast(
+        "CursorResult[Any]",
+        session.execute(delete(AuditEventRow).where(AuditEventRow.created_at < cutoff)),
+    ).rowcount
+    session.commit()
+    return runs, events
 
 
 def record_audit_event(

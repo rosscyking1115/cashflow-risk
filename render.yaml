@@ -45,27 +45,30 @@ services:
       - key: SENTRY_DSN
         sync: false
 
-  # Daily Companies House signal refresh (Docker, same image as the API).
-  # Overrides the image CMD with the refresh script — it must NOT run migrations
-  # (that is the API's job on deploy); it only re-reads/upserts company_signals.
-  # Note: Render Cron Jobs are not offered on the free tier, so this runs on
-  # starter. Schedule is UTC.
+  # Daily maintenance: retention purge + Companies House signal refresh (Docker,
+  # same image as the API). Overrides the image CMD — it must NOT run migrations
+  # (that is the API's job on deploy). One cron does both tasks: cron services
+  # are billed per service. Note: Render Cron Jobs are not offered on the free
+  # tier, so this runs on starter. Schedule is UTC.
   - type: cron
-    name: cashflow-signals-refresh
+    name: cashflow-daily-maintenance
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
     plan: starter
     schedule: "0 3 * * *"
-    dockerCommand: uv run python scripts/refresh_signals.py
+    dockerCommand: uv run python scripts/daily_maintenance.py
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: cashflow-db
           property: connectionString
-      # Companies House REST API key — required for the refresh to do anything.
+      # Companies House REST API key — enables the signal refresh step.
       - key: COMPANIES_HOUSE_API_KEY
         sync: false
+      # Auto-purge window for stored results (privacy notice: 24 months).
+      - key: CASHFLOW_RETENTION_DAYS
+        value: "730"
 
   # Next.js dashboard (Node).
   - type: web
