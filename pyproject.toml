@@ -36,6 +36,7 @@ dev = [
 # Training-time lane (PLAN §0.1: MLflow is tracking-only and lives OUTSIDE the
 # SaaS runtime — the Docker image installs with --no-dev and never gets this).
 train = [
+    "lightgbm>=4",
     "mlflow-skinny>=3",
 ]
 
@@ -76,4 +77,8 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "mlflow.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "lightgbm.*"
 ignore_missing_imports = true

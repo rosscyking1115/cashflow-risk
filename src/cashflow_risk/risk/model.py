@@ -70,7 +70,9 @@ def _feature_row(e: TrainingExample) -> list[float]:
     return row
 
 
-def _design_matrix(examples: Sequence[TrainingExample]) -> np.ndarray:
+def design_matrix(examples: Sequence[TrainingExample]) -> np.ndarray:
+    """The shared feature matrix — every fitted model (logistic, GBM) reads the
+    same leakage-safe columns, so bake-off differences are model, not features."""
     if not examples:
         return np.empty((0, len(FEATURE_NAMES)))
     return np.array([_feature_row(e) for e in examples], dtype=float)
@@ -98,7 +100,7 @@ class LatePaymentModel:
             StandardScaler(),
             LogisticRegression(C=self._c, max_iter=1000, random_state=0),
         )
-        pipeline.fit(_design_matrix(examples), y)
+        pipeline.fit(design_matrix(examples), y)
         self._pipeline = pipeline
         self._constant = None
         return self
@@ -111,5 +113,5 @@ class LatePaymentModel:
         if self._constant is not None:
             return [self._constant] * len(examples)
         assert self._pipeline is not None
-        proba = self._pipeline.predict_proba(_design_matrix(examples))[:, 1]
+        proba = self._pipeline.predict_proba(design_matrix(examples))[:, 1]
         return [float(p) for p in proba]

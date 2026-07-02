@@ -30,7 +30,12 @@ from collections.abc import Callable
 from datetime import timedelta
 
 from cashflow_risk.datagen.generator import GeneratorConfig, generate_dataset
-from cashflow_risk.risk.backtest import BacktestResult, rolling_origin_folds, run_backtest
+from cashflow_risk.risk.backtest import (
+    BacktestResult,
+    FitAndScore,
+    rolling_origin_folds,
+    run_backtest,
+)
 from cashflow_risk.risk.baseline import score_late_probability
 from cashflow_risk.risk.dataset import TrainingExample, build_training_examples
 from cashflow_risk.risk.model import LatePaymentModel
@@ -46,6 +51,23 @@ def _rules(train: list[TrainingExample], test: list[TrainingExample]) -> list[fl
 
 def _logistic(train: list[TrainingExample], test: list[TrainingExample]) -> list[float]:
     return LatePaymentModel().fit(train).predict_proba(test)
+
+
+def _gbm(train: list[TrainingExample], test: list[TrainingExample]) -> list[float]:
+    from cashflow_risk.risk.gbm import GradientBoostedModel  # train group only
+
+    return GradientBoostedModel().fit(train).predict_proba(test)
+
+
+def _scorers() -> list[tuple[str, FitAndScore]]:
+    scorers: list[tuple[str, FitAndScore]] = [("rules", _rules), ("logistic", _logistic)]
+    try:  # the GBM rung needs the train dependency group; skip cleanly without it
+        import lightgbm  # noqa: F401
+
+        scorers.append(("gbm", _gbm))
+    except ImportError:
+        print("(lightgbm not installed — gbm rung skipped; uv sync --group train)")
+    return scorers
 
 
 def _row(name: str, r: BacktestResult) -> str:
@@ -94,6 +116,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     log = _make_logger(args.tracking_uri) if args.track else None
+    scorers = _scorers()
 
     print(f"\nRisk bake-off — {N_FOLDS}-fold rolling origin, issue-time, {HORIZON_DAYS}d horizon")
     print("(synthetic data — pipeline check, not a predictive claim)")
@@ -138,7 +161,7 @@ def main() -> None:
         print(f"seed {seed}:")
         for suffix, examples in variants.items():
             folds = rolling_origin_folds(examples, n_folds=N_FOLDS)
-            for name, scorer in (("rules", _rules), ("logistic", _logistic)):
+            for name, scorer in scorers:
                 result = run_backtest(folds, scorer)
                 key = name + suffix
                 lift = result.pooled.average_precision - result.pooled.prevalence
@@ -160,11 +183,13 @@ def main() -> None:
         "mean PR-AUC lift over prevalence — "
         + ", ".join(f"{k} {v:+.3f}" for k, v in means.items())
     )
-    margin = means["logistic+CH"] - means["rules+CH"]
+    fitted = [k for k in means if k.endswith("+CH") and k != "rules+CH" and k != "ceiling"]
+    best = max(fitted, key=lambda k: means[k])
+    margin = means[best] - means["rules+CH"]
     verdict = "PASS" if margin >= 0.10 else "NOT MET"
     print(
-        f"\nGate 3 (logistic+CH beats rules+CH by >=0.10 pooled PR-AUC lift): "
-        f"{verdict} (margin {margin:+.3f}).\n"
+        f"\nGate 3 (best fitted rung [{best}] beats rules+CH by >=0.10 pooled PR-AUC "
+        f"lift): {verdict} (margin {margin:+.3f}).\n"
         f"Context: the health-oracle ceiling is {means['ceiling']:+.3f} mean lift — the\n"
         "most ANY health-proxy (CH included) can extract from these folds; the rest\n"
         "of the signal is the issue-time-unobservable macro factor. Gate 3 is decided\n"

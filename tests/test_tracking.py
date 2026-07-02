@@ -72,17 +72,18 @@ def test_log_backtest_records_params_pooled_metrics_and_per_fold_history(
     assert [h.value for h in sorted(history, key=lambda h: h.step)] == [0.40, 0.44]
 
 
-def test_runtime_api_never_imports_mlflow() -> None:
-    """The runtime image installs with --no-dev, so mlflow isn't there. Guard the
-    invariant at import level: loading the API must not pull in mlflow (checked
-    in a fresh interpreter so this test file's own import doesn't pollute it)."""
+def test_runtime_api_never_imports_train_only_packages() -> None:
+    """The runtime image installs with --no-dev, so the train group (mlflow,
+    lightgbm) isn't there. Guard the invariant at import level: loading the API
+    must not pull either in (checked in a fresh interpreter so this test file's
+    own imports don't pollute the check)."""
     import subprocess
     import sys
 
     code = (
         "import sys; import cashflow_risk.api; "
-        "assert not any(m == 'mlflow' or m.startswith('mlflow.') for m in sys.modules), "
-        "'runtime API transitively imports mlflow'"
+        "bad = [m for m in sys.modules if m.split('.')[0] in ('mlflow', 'lightgbm')]; "
+        "assert not bad, f'runtime API transitively imports train-only packages: {bad}'"
     )
     proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert proc.returncode == 0, proc.stderr
