@@ -1,0 +1,10 @@
+# Keeps SHA-pinned GitHub Actions current: Dependabot bumps the pinned commit
+# and its `# vX.Y.Z` comment together, so pinning stays secure without going stale.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
