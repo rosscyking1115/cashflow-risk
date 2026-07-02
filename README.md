@@ -27,8 +27,14 @@ every warning has an action, and it works from a CSV upload in minutes.
 uv sync                          # create venv + install deps
 uv run pytest                    # run the test suite
 uv run ruff check .              # lint
+uv run mypy                      # type-check (strict)
 uv run python scripts/demo.py    # see the action brief on synthetic data
 ```
+
+Every push and pull request runs these in CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)):
+ruff, mypy (strict), pytest, a migrations-apply-and-match check (`alembic upgrade
+head` + `alembic check`, mirroring what the API does on deploy), and the Next.js
+production build. Merges should be green on all of them.
 
 ## Run the dashboard
 
