@@ -1,88 +1,143 @@
 # Cashflow Risk Intelligence
 
-> Working title. A UK-focused tool that tells a small business **which late
-> payments could break its cash runway, when the risk appears, and what to do
-> this week.**
+[![CI](https://github.com/rosscyking1115/cashflow-risk/actions/workflows/ci.yml/badge.svg)](https://github.com/rosscyking1115/cashflow-risk/actions/workflows/ci.yml)
 
-Late payments cost UK SMEs an estimated £11bn a year. Most owners find out about
-a cash shortfall when it is already happening. This tool forecasts a 13-week cash
-runway, ranks the invoices and customers driving the risk, and produces a plain
--English action brief — *decision support, not regulated advice*.
+A tool for UK small businesses that answers three questions about late payments:
+**which** ones could break your cash runway, **when** the risk appears, and **what
+to do this week** about it.
 
-## Status
+Late payments cost UK SMEs an estimated £11bn a year, and most owners only find
+out about a shortfall once it is already happening. Cashflow Risk Intelligence
+takes a CSV of your invoices, forecasts a 13-week cash runway, ranks the invoices
+and customers driving the risk, and writes a plain-English action brief — every
+score with a reason, every warning with a next step.
 
-Early build. **Phase 1: analytics engine on synthetic UK SME data.** Not yet a
-deployable product. See [docs/PLAN.md](docs/PLAN.md) for the full roadmap and
-[CONTEXT.md](CONTEXT.md) for the domain language.
+> [!IMPORTANT]
+> This is decision support, not regulated advice. It never gives tax, credit, or
+> investment advice, and it profiles companies (via Companies House) — never
+> sole-trader individuals.
 
-## The wedge
+## Features
 
-Not "forecasting exists" — that is a crowded market (Float, Futrli, Fathom). The
-wedge is **explainable, action-first late-payment risk**: every score has a why,
-every warning has an action, and it works from a CSV upload in minutes.
+- **13-week cash forecast** from your invoice ledger, timed by a risk-adjusted view
+  of when each invoice will actually be paid.
+- **Invoice & customer risk ranking** by expected cash at risk (amount × probability
+  of late payment), each with plain-English drivers.
+- **Action brief** — a deterministic, readable summary of the week's chase list and
+  the runway impact.
+- **Companies House enrichment** — a customer's overdue filings, insolvency, and
+  charges feed the late-payment score; a daily job keeps the signals fresh.
+- **Multi-tenant with real RBAC** — owners and invited accountants, every query
+  scoped to a tenant, cross-tenant access refused.
+- **Trust built in** — PII-scrubbed error reporting, no financial data in logs,
+  CSV-injection-safe exports, upload hardening, an audit log, self-serve
+  export/delete, and a 24-month retention purge.
 
-## Quick start (engine)
+## How it works
+
+```
+ Next.js dashboard ──TLS + JWT──> FastAPI engine ──> PostgreSQL (system of record)
+   (Clerk sign-in)                    │
+                                      ├──> Companies House Public Data API (read)
+                                      └──> Sentry (errors, PII-scrubbed)
+```
+
+The engine is a pure-Python analytics core (leakage-safe feature store, forecast
+baselines, a rules-based risk scorer) exposed over FastAPI. PostgreSQL is the sole
+system of record; only derived results are stored, never raw uploads. A separate,
+training-time-only lane holds the risk-model bake-off (rules → logistic →
+gradient-boosted) with MLflow tracking — it never ships in the runtime image.
+
+## Getting started
+
+**Prerequisites:** [uv](https://docs.astral.sh/uv/) (Python 3.12) and Node.js 20+.
+
+Run the engine and see the action brief on synthetic data:
 
 ```bash
-uv sync                          # create venv + install deps
+uv sync                          # create the venv + install deps
 uv run pytest                    # run the test suite
-uv run ruff check .              # lint
-uv run mypy                      # type-check (strict)
-uv run python scripts/demo.py    # see the action brief on synthetic data
+uv run python scripts/demo.py    # print an action brief for a synthetic SME
 ```
 
-Every push and pull request runs these in CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)):
-ruff, mypy (strict), pytest, a migrations-apply-and-match check (`alembic upgrade
-head` + `alembic check`, mirroring what the API does on deploy), and the Next.js
-production build. Merges should be green on all of them.
-
-## Run the dashboard
-
-Two processes — the API and the Next.js web app:
-
-```powershell
-# 1. API (engine over HTTP). CASHFLOW_ENV=dev enables a local token so uploads
-#    work without a hosted login; omit it and only the public demo is available.
-$env:CASHFLOW_ENV="dev"; uv run uvicorn cashflow_risk.api:app --port 8000
-
-# 2. web dashboard (in another terminal). npm install only the first time.
-cd web ; npm install ; npm run dev   # http://localhost:3000
-```
-
-The dashboard opens on the **public demo**; use **Invoices CSV** to analyse your
-own export (requires the dev token above — in production this is a real sign-in).
-The tenant is always taken from the token, never client input. Point the web app
-at a non-default API with `NEXT_PUBLIC_API_BASE`.
-
-## Database
-
-Defaults to a local SQLite file; set `DATABASE_URL` for Postgres in production.
-SQLite dev auto-creates tables on startup; managed databases use Alembic:
+Run the full dashboard (two processes):
 
 ```bash
-uv run alembic upgrade head      # apply migrations
-uv run alembic revision --autogenerate -m "describe change"
+# 1. API. CASHFLOW_ENV=dev enables a local token so uploads work without a
+#    hosted login; omit it and only the public demo is available.
+CASHFLOW_ENV=dev uv run uvicorn cashflow_risk.api:app --port 8000
+
+# 2. Web dashboard (another terminal); npm install only the first time.
+cd web && npm install && npm run dev   # http://localhost:3000
 ```
 
-## Deploy
+The dashboard opens on the public demo. Use **Invoices CSV** to analyse your own
+export — the tenant is always taken from the token, never client input.
 
-API + dashboard + Postgres deploy to Render from [`render.yaml`](render.yaml) —
-push to GitHub, then **New → Blueprint**. Full steps in
-[docs/deployment.md](docs/deployment.md).
+> [!NOTE]
+> Synthetic data is for demonstration and pipeline tests only. Predictive claims
+> are made against real UK payment-practice benchmarks, never synthetic data
+> alone (see [docs/adr/0002](docs/adr)).
 
-## Principles
+## Configuration
 
-- **Trust first.** Calibrated probabilities, honest uncertainty, no false
-  precision. Decision support — never tax, credit, or investment advice.
-- **Privacy by retention.** Server-side processing; raw uploads discarded after
-  parse; one-click delete. See [docs/security_privacy.md](docs/security_privacy.md).
-- **Credible data science.** Leakage-safe rolling-origin evaluation; beat
-  deterministic + seasonal-naive baselines before any ML; validate against real
-  UK payment-practice benchmarks, never synthetic data alone.
+The service reads configuration from the environment; secure defaults mean it runs
+locally with none of it set.
 
-## Architecture (MVP)
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Postgres connection string (defaults to a local SQLite file) |
+| `CASHFLOW_JWT_SECRET` | Signing secret; **required** in production |
+| `CASHFLOW_ENV` | `dev` enables the local dev-token endpoint |
+| `CLERK_JWKS_URL`, `CLERK_ISSUER` | Enable Clerk-verified sign-in on the API |
+| `COMPANIES_HOUSE_API_KEY` | Enables customer risk enrichment |
+| `SENTRY_DSN` | Enables PII-scrubbed error reporting (optional) |
+| `CASHFLOW_RETENTION_DAYS` | Auto-purge window for results (default 730) |
+| `NEXT_PUBLIC_API_BASE` | Points the web app at a non-default API |
 
-Python analytics engine → FastAPI → Next.js dashboard. PostgreSQL is the single
-source of record; DuckDB is an ephemeral in-process query engine. No browser-side
-data store, no background-job broker, no distributed tracing at MVP. See
-[docs/architecture.md](docs/architecture.md).
+## Database and migrations
+
+Local dev auto-creates SQLite tables on startup. Managed databases use Alembic,
+and the API runs `alembic upgrade head` on deploy:
+
+```bash
+uv run alembic upgrade head                              # apply migrations
+uv run alembic revision --autogenerate -m "describe it"  # after a model change
+```
+
+## Testing and CI
+
+```bash
+uv run pytest          # tests
+uv run ruff check .    # lint
+uv run mypy            # type-check (strict)
+```
+
+Every push and pull request runs all of the above plus a migrations-apply-and-match
+check (`alembic upgrade head` + `alembic check`) and the Next.js production build
+([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+
+## Deployment
+
+The API, dashboard, managed Postgres, and a daily maintenance cron deploy to Render
+from [`render.yaml`](render.yaml) — push to GitHub, then **New → Blueprint**. Full
+steps in [docs/deployment.md](docs/deployment.md).
+
+## Project layout
+
+| Path | What |
+|---|---|
+| `src/cashflow_risk/` | The engine: `domain`, `datagen`, `features`, `forecasting`, `risk`, `reporting`, `ingestion`, `enrichment`, `db`, `auth`, `api` |
+| `web/` | Next.js dashboard |
+| `scripts/` | `demo.py`, the risk bake-off, and the daily maintenance job |
+| `alembic/` | Database migrations |
+| `docs/` | Plan, architecture, and the security/privacy docs below |
+
+## Documentation
+
+- [docs/PLAN.md](docs/PLAN.md) — roadmap, phasing, and decision gates
+- [CONTEXT.md](CONTEXT.md) — the domain model and ubiquitous language
+- [docs/architecture.md](docs/architecture.md) — architecture and its trade-offs
+- [SECURITY.md](SECURITY.md) — security posture and vulnerability reporting
+- [docs/threat-model.md](docs/threat-model.md) — STRIDE threat model
+- [docs/security_privacy.md](docs/security_privacy.md) · [docs/dpia.md](docs/dpia.md) · [docs/privacy-notice.md](docs/privacy-notice.md)

@@ -3,6 +3,10 @@
 Micro-SaaS-first means real businesses' real financial data. Trust is the
 product. These constraints are not optional.
 
+> Related: [SECURITY.md](../SECURITY.md) (posture summary + vulnerability
+> reporting), [threat-model.md](threat-model.md) (STRIDE analysis), and
+> [dpia.md](dpia.md) (data-protection impact assessment).
+
 ## Principles
 
 - **Data minimisation.** Raw uploads parsed server-side and **discarded after
