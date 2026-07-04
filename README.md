@@ -1,6 +1,9 @@
 # Cashflow Risk Intelligence
 
 [![CI](https://github.com/rosscyking1115/cashflow-risk/actions/workflows/ci.yml/badge.svg)](https://github.com/rosscyking1115/cashflow-risk/actions/workflows/ci.yml)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![Typed: mypy strict](https://img.shields.io/badge/mypy-strict-blue.svg)](https://mypy-lang.org/)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 A tool for UK small businesses that answers three questions about late payments:
 **which** ones could break your cash runway, **when** the risk appears, and **what
@@ -17,6 +20,29 @@ score with a reason, every warning with a next step.
 > investment advice, and it profiles companies (via Companies House) — never
 > sole-trader individuals.
 
+### The action brief
+
+The headline output — every score has a reason, every warning a next step. This is
+real output from `uv run python scripts/demo.py` on a synthetic business (no real
+financial data):
+
+```text
+Synthetic Trading Ltd  —  as of 30 Jul 2025
+25 customers · 45 open invoices · runway 13/13 weeks
+
+ACTION BRIEF
+------------------------------------------------------------
+Cash is projected to stay above your £6,000 reserve for all 13 weeks.
+
+Top cash-at-risk invoices:
+  • INV-1287: £18,821 at risk (39% late) — Customer has paid late 26% of the time (98 prior invoices)
+  • INV-1264: £13,684 at risk (39% late) — Customer has paid late 26% of the time (98 prior invoices)
+  • INV-1260: £13,285 at risk (39% late) — Customer has paid late 26% of the time (98 prior invoices)
+
+What to do this week:
+  → No shortfall expected, but INV-1287 carries the most cash at risk (£18,821) — worth chasing early.
+```
+
 ## Features
 
 - **13-week cash forecast** from your invoice ledger, timed by a risk-adjusted view
@@ -28,10 +54,28 @@ score with a reason, every warning with a next step.
 - **Companies House enrichment** — a customer's overdue filings, insolvency, and
   charges feed the late-payment score; a daily job keeps the signals fresh.
 - **Multi-tenant with real RBAC** — owners and invited accountants, every query
-  scoped to a tenant, cross-tenant access refused.
-- **Trust built in** — PII-scrubbed error reporting, no financial data in logs,
-  CSV-injection-safe exports, upload hardening, an audit log, self-serve
-  export/delete, and a 24-month retention purge.
+  scoped to a tenant, cross-tenant access refused (see Security & privacy below).
+
+## Security & privacy
+
+Handling real businesses' financial data means trust is the product, so
+security and privacy are build-time requirements, enforced by tests:
+
+- **Multi-tenant isolation & RBAC** — every query is scoped to a tenant; owners
+  and invited accountants have distinct roles; cross-tenant access is refused
+  (and that refusal is a test).
+- **Data minimisation** — raw uploads are never stored, only derived results.
+- **No sensitive data in logs or error reports** — Sentry runs with no PII, no
+  local variables, no request bodies, and `before_send` redaction; a test asserts
+  no financial fields reach the logs.
+- **Safe by construction** — CSV-formula-injection-escaped exports, upload
+  hardening (size/row limits, content sniffing), an append-only audit log,
+  self-serve export/delete, and a 24-month retention purge.
+
+The full posture is documented, not just implemented: a
+[STRIDE threat model](docs/threat-model.md), a
+[DPIA](docs/dpia.md), a [privacy notice](docs/privacy-notice.md), and a
+[security policy](SECURITY.md) with a vulnerability-reporting process.
 
 ## How it works
 
