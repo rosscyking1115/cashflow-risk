@@ -4,6 +4,7 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![Typed: mypy strict](https://img.shields.io/badge/mypy-strict-blue.svg)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![License](https://img.shields.io/badge/license-proprietary-lightgrey.svg)](LICENSE)
 
 A tool for UK small businesses that answers three questions about late payments:
 **which** ones could break your cash runway, **when** the risk appears, and **what
@@ -15,33 +16,17 @@ takes a CSV of your invoices, forecasts a 13-week cash runway, ranks the invoice
 and customers driving the risk, and writes a plain-English action brief — every
 score with a reason, every warning with a next step.
 
+**[▶ Live demo](https://cashflow-web-sidu.onrender.com/)** — opens on a synthetic
+dataset, no sign-in. (Free-tier host; the first load may take ~30s to wake.)
+
 > [!IMPORTANT]
 > This is decision support, not regulated advice. It never gives tax, credit, or
 > investment advice, and it profiles companies (via Companies House) — never
 > sole-trader individuals.
 
-### The action brief
+![The dashboard on synthetic data: a 13-week cash-runway readout and forecast, the invoices ranked by cash at risk with plain-English drivers, and the week's recommended action.](docs/images/dashboard.png)
 
-The headline output — every score has a reason, every warning a next step. This is
-real output from `uv run python scripts/demo.py` on a synthetic business (no real
-financial data):
-
-```text
-Synthetic Trading Ltd  —  as of 30 Jul 2025
-25 customers · 45 open invoices · runway 13/13 weeks
-
-ACTION BRIEF
-------------------------------------------------------------
-Cash is projected to stay above your £6,000 reserve for all 13 weeks.
-
-Top cash-at-risk invoices:
-  • INV-1287: £18,821 at risk (39% late) — Customer has paid late 26% of the time (98 prior invoices)
-  • INV-1264: £13,684 at risk (39% late) — Customer has paid late 26% of the time (98 prior invoices)
-  • INV-1260: £13,285 at risk (39% late) — Customer has paid late 26% of the time (98 prior invoices)
-
-What to do this week:
-  → No shortfall expected, but INV-1287 carries the most cash at risk (£18,821) — worth chasing early.
-```
+<p align="center"><em>The dashboard on synthetic demo data — runway forecast, cash-at-risk ranking, and the weekly action. Every score carries its reason.</em></p>
 
 ## Features
 
