@@ -1,11 +1,63 @@
 # Production Readiness Plan — confidential company data
 
-> Status: proposed (2026-07-04). This plan takes the project from *portfolio-grade*
-> (boundaries **documented**) to a *production system for confidential company
-> data* (boundaries **enforced**). It deepens and supersedes the "Phase 4 —
-> Production hardening" bullet in [PLAN.md](PLAN.md). Companion docs:
+> Status: **decisions locked** (grilled 2026-07-04). This plan takes the project
+> from *portfolio-grade* (boundaries **documented**) to a *production system for
+> confidential company data* (boundaries **enforced**). It deepens and supersedes
+> the "Phase 4 — Production hardening" bullet in [PLAN.md](PLAN.md). Companion docs:
 > [threat-model.md](threat-model.md), [security_privacy.md](security_privacy.md),
 > [dpia.md](dpia.md).
+
+## 0. Locked decisions & roadmap (grilled 2026-07-04)
+
+Outcome of the production-pivot grilling. Where these differ from §3–§5 below, these win.
+
+| # | Decision | Choice |
+|---|---|---|
+| Q1 | End-state | **Multi-tenant SaaS, pilot-scale** (1–5 design-partner tenants first; billing/growth deferred) |
+| Q2 | Delivery architecture | **Keep the split** — Python engine → FastAPI → Next.js client (already so) |
+| Q3 | Tenant isolation | **Shared DB + Postgres RLS** as a second wall behind `repository.py` |
+| Q4 | Identity | **Clerk, mandatory in prod** (fail closed, drop HS256, MFA); authz stays in-app (`Membership`) |
+| Q5 | Ingestion | **Xero/QuickBooks connectors are the strategic core; hardened CSV upload bridges day-one & stays as permanent fallback** |
+| Q6 | Compliance | **Compliant from day one** — EU/UK region, payload+token encryption + KMS, ICO + DPAs + DPIA sign-off before real data |
+| Q7 | v1 scope | **The existing CSV→action-brief loop, made production-safe (Tier 0)** — no new features |
+| Q8 | License & repo | **Proprietary; public now for portfolio, product repo goes private at go-live** |
+
+**Follow-on defaults (adjustable):** async = keep the daily cron, add a queue only for connector syncs · storage = Postgres-only + a KMS/secret vault (no object store yet) · hosting = Render paid, EU/Frankfurt, Postgres w/ PITR (no native KMS → external key) · billing = Stripe, later · observability = wire Sentry + uptime + secret-scan CI step · repo = proprietary monorepo, private at go-live.
+
+### Target architecture
+
+```
+ Browser ──Clerk session──> Next.js (Render, EU) ──Bearer JWT──> FastAPI (Render, EU)
+                                                          │  authz: Membership/RBAC
+                                                          ├──> Postgres (EU, PITR): RLS + envelope-encrypted payload
+                                                          ├──> KMS / secret vault (wraps data keys, holds OAuth tokens)
+                                                          ├──> Companies House API (outbound, read)
+                                                          ├──> Xero/QuickBooks OAuth (fast-follow; tokens encrypted)
+                                                          └──> Sentry (PII-scrubbed)
+```
+
+### Phased roadmap
+
+- **Phase 0 — Foundations (free, reversible, do now):** record ADRs D1–D4; make
+  auth fail-closed (Clerk-only in prod, no HS256); scaffold RLS; wire Sentry +
+  uptime + a secret-scan CI step. No spend, strictly-better hardening.
+- **Phase 1 — Tier 0 infra (on go-live trigger):** Render paid + EU region;
+  Postgres with PITR + a tested restore drill; DB least-privilege role; envelope
+  encryption of `analysis_runs.payload` behind a KMS; secrets moved to a vault;
+  per-tenant rate limiting.
+- **Phase 2 — Compliance & legal:** ICO registration + fee; DPAs (Clerk, Render,
+  Sentry); DPIA sign-off; ROPA; confirm notice/retention match reality.
+- **── Production Gate ──** a real customer's ledger can be uploaded, encrypted,
+  DB-isolated, recovered from backup, audited, exported, and deleted — Clerk-only,
+  EU region, signed DPIA — proven by tests + one restore/delete drill. **Take the
+  product repo private here.**
+- **Phase 3 — Connectors:** Xero/QuickBooks OAuth (app review, encrypted token
+  storage + rotation, scheduled sync queue); CSV upload remains the fallback.
+- **Phase 4 — Tier 1 scale/assurance:** immutable/streamed audit sink, per-tenant
+  keys, pen test, on-call, SLA, load/DoS testing. Only with paying pull.
+
+**Trigger for Phase 1+ spend:** a design partner (Gate 1/5) willing to put real
+data in. Phase 0 is unconditional; Phases 1–2 wait for that partner (see §7).
 
 ## 1. Objective and principle
 
