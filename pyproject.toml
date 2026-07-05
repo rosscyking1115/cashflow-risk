@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Cashflow Risk Intelligence — late-payment risk + 13-week cash runway for UK SMEs."
 readme = "README.md"
 requires-python = ">=3.12"
-license = "LicenseRef-Proprietary"
+license = "MIT"
 dependencies = [
     "numpy>=2.0",
     "pandas>=2.2",

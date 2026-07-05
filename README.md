@@ -6,7 +6,7 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![Typed: mypy strict](https://img.shields.io/badge/mypy-strict-blue.svg)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![License](https://img.shields.io/badge/license-proprietary-lightgrey.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A worked, end-to-end project that models a real problem: which of a UK small
 business's unpaid invoices could break its cash runway, **when** the risk appears,
@@ -47,6 +47,8 @@ synthetic data the fitted model **ties** the rules baseline — and the project
 **explains why** (a latent "health-oracle" ceiling; the predictive signal is a
 macro factor that is unobservable at prediction time without leakage). It measures
 its models with a credible backtest rather than claiming a number it can't defend.
+The full write-up, with the numbers, is in
+[docs/model-evaluation.md](docs/model-evaluation.md).
 
 ## Features
 
@@ -192,6 +194,7 @@ is hosted. Details in [docs/deployment.md](docs/deployment.md).
 
 ## Documentation
 
+- [docs/model-evaluation.md](docs/model-evaluation.md) — how the risk model is measured, and the honest result
 - [docs/architecture.md](docs/architecture.md) — architecture and its trade-offs
 - [CONTEXT.md](CONTEXT.md) — the domain model and ubiquitous language
 - [SECURITY.md](SECURITY.md) — security posture and vulnerability reporting
