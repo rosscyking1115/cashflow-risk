@@ -1,36 +1,56 @@
 # Cashflow Risk Intelligence
 
+> **Portfolio project** — full-stack engineering · applied fintech data science · production-grade security.
+
 [![CI](https://github.com/rosscyking1115/cashflow-risk/actions/workflows/ci.yml/badge.svg)](https://github.com/rosscyking1115/cashflow-risk/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![Typed: mypy strict](https://img.shields.io/badge/mypy-strict-blue.svg)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License](https://img.shields.io/badge/license-proprietary-lightgrey.svg)](LICENSE)
 
-A tool for UK small businesses that answers three questions about late payments:
-**which** ones could break your cash runway, **when** the risk appears, and **what
-to do this week** about it.
+A worked, end-to-end project that models a real problem: which of a UK small
+business's unpaid invoices could break its cash runway, **when** the risk appears,
+and **what to do this week** about it. From an invoice CSV it forecasts a 13-week
+cash runway, ranks invoices by expected cash at risk (late-payment probability ×
+amount), enriches customer risk with Companies House filings, and writes a
+plain-English action brief — every score with a reason.
 
-Late payments cost UK SMEs an estimated £11bn a year, and most owners only find
-out about a shortfall once it is already happening. Cashflow Risk Intelligence
-takes a CSV of your invoices, forecasts a 13-week cash runway, ranks the invoices
-and customers driving the risk, and writes a plain-English action brief — every
-score with a reason, every warning with a next step.
+It exists to demonstrate breadth across three areas that rarely appear together:
+a **Python analytics engine**, **applied data science** on late-payment risk done
+honestly, and a **security/privacy posture** built for confidential financial data.
+
+> [!NOTE]
+> This is a portfolio project, not a commercial product. It is not for sale, holds
+> no real customer data, and the phased product roadmap and production-pivot plan
+> in [`docs/`](docs/) are **frozen** — kept as evidence of the product, planning,
+> and threat-modelling thinking, not as work in progress. The engineering is the
+> deliverable.
 
 **[▶ Live demo](https://cashflow-web-sidu.onrender.com/)** — opens on a synthetic
 dataset, no sign-in. (Free-tier host; the first load may take ~30s to wake.)
-
-> [!IMPORTANT]
-> This is decision support, not regulated advice. It never gives tax, credit, or
-> investment advice, and it profiles companies (via Companies House) — never
-> sole-trader individuals.
 
 ![The dashboard on synthetic data: a 13-week cash-runway readout and forecast, the invoices ranked by cash at risk with plain-English drivers, and the week's recommended action.](docs/images/dashboard.png)
 
 <p align="center"><em>The dashboard on synthetic demo data — runway forecast, cash-at-risk ranking, and the weekly action. Every score carries its reason.</em></p>
 
+## What this demonstrates
+
+| Area | Highlights |
+|---|---|
+| **Full-stack** | Pure-Python analytics engine behind a FastAPI service; PostgreSQL system-of-record with SQLAlchemy + Alembic migrations; Next.js/React/Tailwind dashboard; Clerk auth; deployed on Render; GitHub Actions CI (ruff, mypy-strict, pytest, migration-apply-and-drift check, Next build) with SHA-pinned actions |
+| **Applied data science** | Leakage-safe as-of feature store; a pinned late-payment label with censoring; **rolling-origin, group-aware backtest**; the right metrics for a rare, ranked problem (PR-AUC vs prevalence, top-decile precision, calibration); a rules → logistic → gradient-boosted bake-off tracked in MLflow; an **anti-circular synthetic data generator** (latent mechanism the model never sees) |
+| **Security & governance** | Multi-tenant isolation + RBAC with cross-tenant refusal (tested); STRIDE threat model + DPIA + privacy notice; PII-scrubbed error reporting **enforced by a test**; CSV-injection-safe exports; upload hardening; append-only audit log; retention auto-purge; self-serve data export/delete |
+| **Engineering discipline** | Test-first throughout (150+ tests), strict typing, deep-module design, honest documentation of what does and doesn't work |
+
+The data-science honesty is deliberate and, for this domain, the point: on the
+synthetic data the fitted model **ties** the rules baseline — and the project
+**explains why** (a latent "health-oracle" ceiling; the predictive signal is a
+macro factor that is unobservable at prediction time without leakage). It measures
+its models with a credible backtest rather than claiming a number it can't defend.
+
 ## Features
 
-- **13-week cash forecast** from your invoice ledger, timed by a risk-adjusted view
+- **13-week cash forecast** from an invoice ledger, timed by a risk-adjusted view
   of when each invoice will actually be paid.
 - **Invoice & customer risk ranking** by expected cash at risk (amount × probability
   of late payment), each with plain-English drivers.
@@ -43,8 +63,9 @@ dataset, no sign-in. (Free-tier host; the first load may take ~30s to wake.)
 
 ## Security & privacy
 
-Handling real businesses' financial data means trust is the product, so
-security and privacy are build-time requirements, enforced by tests:
+The project treats confidential financial data as a first-class constraint —
+security and privacy are build-time requirements, several of them enforced by
+tests:
 
 - **Multi-tenant isolation & RBAC** — every query is scoped to a tenant; owners
   and invited accountants have distinct roles; cross-tenant access is refused
@@ -57,10 +78,10 @@ security and privacy are build-time requirements, enforced by tests:
   hardening (size/row limits, content sniffing), an append-only audit log,
   self-serve export/delete, and a 24-month retention purge.
 
-The full posture is documented, not just implemented: a
+The posture is documented, not just implemented: a
 [STRIDE threat model](docs/threat-model.md), a
 [DPIA](docs/dpia.md), a [privacy notice](docs/privacy-notice.md), and a
-[security policy](SECURITY.md) with a vulnerability-reporting process.
+[security policy](SECURITY.md).
 
 ## How it works
 
@@ -89,6 +110,13 @@ uv run pytest                    # run the test suite
 uv run python scripts/demo.py    # print an action brief for a synthetic SME
 ```
 
+See the model evaluation for yourself:
+
+```bash
+uv run python scripts/eval_risk_baseline.py   # rules-baseline metrics
+uv run python scripts/bakeoff_risk.py         # rules vs logistic vs GBM, backtested
+```
+
 Run the full dashboard (two processes):
 
 ```bash
@@ -100,7 +128,7 @@ CASHFLOW_ENV=dev uv run uvicorn cashflow_risk.api:app --port 8000
 cd web && npm install && npm run dev   # http://localhost:3000
 ```
 
-The dashboard opens on the public demo. Use **Invoices CSV** to analyse your own
+The dashboard opens on the public demo. Use **Invoices CSV** to analyse a sample
 export — the tenant is always taken from the token, never client input.
 
 > [!NOTE]
@@ -149,8 +177,8 @@ check (`alembic upgrade head` + `alembic check`) and the Next.js production buil
 ## Deployment
 
 The API, dashboard, managed Postgres, and a daily maintenance cron deploy to Render
-from [`render.yaml`](render.yaml) — push to GitHub, then **New → Blueprint**. Full
-steps in [docs/deployment.md](docs/deployment.md).
+from [`render.yaml`](render.yaml) as a blueprint — how the [live demo](https://cashflow-web-sidu.onrender.com/)
+is hosted. Details in [docs/deployment.md](docs/deployment.md).
 
 ## Project layout
 
@@ -158,15 +186,15 @@ steps in [docs/deployment.md](docs/deployment.md).
 |---|---|
 | `src/cashflow_risk/` | The engine: `domain`, `datagen`, `features`, `forecasting`, `risk`, `reporting`, `ingestion`, `enrichment`, `db`, `auth`, `api` |
 | `web/` | Next.js dashboard |
-| `scripts/` | `demo.py`, the risk bake-off, and the daily maintenance job |
+| `scripts/` | `demo.py`, the model evaluation + risk bake-off, and the daily maintenance job |
 | `alembic/` | Database migrations |
-| `docs/` | Plan, architecture, and the security/privacy docs below |
+| `docs/` | Architecture, the security/privacy docs below, and the (frozen) plan |
 
 ## Documentation
 
-- [docs/PLAN.md](docs/PLAN.md) — roadmap, phasing, and decision gates
-- [CONTEXT.md](CONTEXT.md) — the domain model and ubiquitous language
 - [docs/architecture.md](docs/architecture.md) — architecture and its trade-offs
+- [CONTEXT.md](CONTEXT.md) — the domain model and ubiquitous language
 - [SECURITY.md](SECURITY.md) — security posture and vulnerability reporting
 - [docs/threat-model.md](docs/threat-model.md) — STRIDE threat model
 - [docs/security_privacy.md](docs/security_privacy.md) · [docs/dpia.md](docs/dpia.md) · [docs/privacy-notice.md](docs/privacy-notice.md)
+- [docs/PLAN.md](docs/PLAN.md) · [docs/production-readiness.md](docs/production-readiness.md) — the **frozen** product roadmap and production-pivot decisions (retained to show the thinking; not in progress)

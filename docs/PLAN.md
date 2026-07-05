@@ -1,5 +1,13 @@
 # Cashflow Risk Intelligence — Build Plan (v2, optimised)
 
+> [!WARNING]
+> **FROZEN — not being executed.** This project is a **portfolio showcase**, not a
+> commercial product; it is not going to market. The phased roadmap, decision
+> gates, and demand-validation collateral below are retained as evidence of
+> product, planning, and architecture thinking — **not** as work in progress.
+> No further phases, onboarding, pricing, or go-to-market will be pursued. The
+> engineering already built is the deliverable (see the repository README).
+
 > This is the working plan. It supersedes the original
 > `SME_Cashflow_Risk_Intelligence_Plan.md`, restructured after a three-angle
 > review (product/GTM, data-science/ML, architecture/security/regulatory).
