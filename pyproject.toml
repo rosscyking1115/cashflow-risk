@@ -5,6 +5,13 @@ description = "Cashflow Risk Intelligence — late-payment risk + 13-week cash r
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
+authors = [{ name = "Cheng-Yuan King", email = "rosscyking1115@gmail.com" }]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Framework :: FastAPI",
+    "Private :: Do Not Upload",
+]
 dependencies = [
     "numpy>=2.0",
     "pandas>=2.2",
@@ -23,6 +30,9 @@ dependencies = [
     "scikit-learn>=1.9.0",
     "sentry-sdk[fastapi]>=2.64.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/rosscyking1115/cashflow-risk"
 
 [dependency-groups]
 dev = [
