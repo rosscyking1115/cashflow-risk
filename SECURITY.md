@@ -10,7 +10,7 @@ This document is the entry point; the detail lives in
 ## Reporting a vulnerability
 
 Please report suspected vulnerabilities privately — **do not open a public
-issue**. Email the maintainer (see the repository owner's profile) with steps to
+issue**. Email the maintainer at **rosscyking@gmail.com** with steps to
 reproduce and the impact you observed. We aim to acknowledge within 3 working
 days and to agree a disclosure timeline with you. Good-faith security research is
 welcome; please avoid accessing other tenants' data or degrading the service.
