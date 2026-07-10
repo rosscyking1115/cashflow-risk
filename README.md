@@ -1,6 +1,6 @@
 # Cashflow Risk Intelligence
 
-> **Portfolio project** — full-stack engineering · applied fintech data science · production-grade security.
+> Full-stack engineering · applied fintech data science · production-grade security.
 
 [![CI](https://github.com/rosscyking1115/cashflow-risk/actions/workflows/ci.yml/badge.svg)](https://github.com/rosscyking1115/cashflow-risk/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
@@ -15,16 +15,15 @@ cash runway, ranks invoices by expected cash at risk (late-payment probability �
 amount), enriches customer risk with Companies House filings, and writes a
 plain-English action brief — every score with a reason.
 
-It exists to demonstrate breadth across three areas that rarely appear together:
+It brings together three areas that rarely appear in one project:
 a **Python analytics engine**, **applied data science** on late-payment risk done
 honestly, and a **security/privacy posture** built for confidential financial data.
 
 > [!NOTE]
-> This is a portfolio project, not a commercial product. It is not for sale, holds
+> This is a reference project, not a commercial product. It is not for sale, holds
 > no real customer data, and the phased product roadmap and production-pivot plan
-> in [`docs/`](docs/) are **frozen** — kept as evidence of the product, planning,
-> and threat-modelling thinking, not as work in progress. The engineering is the
-> deliverable.
+> in [`docs/`](docs/) are **frozen** — kept as a record of the planning and
+> threat-modelling, not as work in progress.
 
 **[▶ Live demo](https://cashflow-web-sidu.onrender.com/)** — opens on a synthetic
 dataset, no sign-in. (Free-tier host; the first load may take ~30s to wake.)
@@ -33,7 +32,7 @@ dataset, no sign-in. (Free-tier host; the first load may take ~30s to wake.)
 
 <p align="center"><em>The dashboard on synthetic demo data — runway forecast, cash-at-risk ranking, and the weekly action. Every score carries its reason.</em></p>
 
-## What this demonstrates
+## What it covers
 
 | Area | Highlights |
 |---|---|
