@@ -15,9 +15,8 @@ cash runway, ranks invoices by expected cash at risk (late-payment probability �
 amount), enriches customer risk with Companies House filings, and writes a
 plain-English action brief — every score with a reason.
 
-It brings together three areas that rarely appear in one project:
-a **Python analytics engine**, **applied data science** on late-payment risk done
-honestly, and a **security/privacy posture** built for confidential financial data.
+It spans a **Python analytics engine**, **applied data science** on late-payment
+risk, and a **security/privacy posture** built for confidential financial data.
 
 > [!NOTE]
 > This is a reference project, not a commercial product. It is not for sale, holds
@@ -41,12 +40,11 @@ dataset, no sign-in. (Free-tier host; the first load may take ~30s to wake.)
 | **Security & governance** | Multi-tenant isolation + RBAC with cross-tenant refusal (tested); STRIDE threat model + DPIA + privacy notice; PII-scrubbed error reporting **enforced by a test**; CSV-injection-safe exports; upload hardening; append-only audit log; retention auto-purge; self-serve data export/delete |
 | **Engineering discipline** | Test-first throughout (150+ tests), strict typing, deep-module design, honest documentation of what does and doesn't work |
 
-The data-science honesty is deliberate and, for this domain, the point: on the
-synthetic data the fitted model **ties** the rules baseline — and the project
-**explains why** (a latent "health-oracle" ceiling; the predictive signal is a
-macro factor that is unobservable at prediction time without leakage). It measures
-its models with a credible backtest rather than claiming a number it can't defend.
-The full write-up, with the numbers, is in
+On the synthetic data the fitted models **tie** the rules baseline, and the
+evaluation **explains why**: a latent "health-oracle" ceiling shows the predictive
+signal is a macro factor that is unobservable at prediction time without leakage.
+Models are measured with a rolling-origin, group-aware backtest rather than a
+headline number. Full write-up, with the numbers:
 [docs/model-evaluation.md](docs/model-evaluation.md).
 
 ## Features
@@ -199,4 +197,4 @@ is hosted. Details in [docs/deployment.md](docs/deployment.md).
 - [SECURITY.md](SECURITY.md) — security posture and vulnerability reporting
 - [docs/threat-model.md](docs/threat-model.md) — STRIDE threat model
 - [docs/security_privacy.md](docs/security_privacy.md) · [docs/dpia.md](docs/dpia.md) · [docs/privacy-notice.md](docs/privacy-notice.md)
-- [docs/PLAN.md](docs/PLAN.md) · [docs/production-readiness.md](docs/production-readiness.md) — the **frozen** product roadmap and production-pivot decisions (retained to show the thinking; not in progress)
+- [docs/PLAN.md](docs/PLAN.md) · [docs/production-readiness.md](docs/production-readiness.md) — the **frozen** product roadmap and production-pivot decisions (a record of the earlier planning; not in progress)

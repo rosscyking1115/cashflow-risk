@@ -1,11 +1,10 @@
 # Production Readiness Plan — confidential company data
 
 > [!WARNING]
-> **FROZEN — not being executed.** This project is a **portfolio showcase**, not a
-> product going to market. The production pivot below is **not being pursued**;
-> this document is retained to demonstrate production-readiness, threat-modelling,
-> and decision-making (ADRs, RLS, KMS, compliance) thinking. Nothing here is
-> in progress.
+> **FROZEN — not being executed.** This is a reference project, not a product going
+> to market. The production pivot below is **not being pursued**; this document is
+> retained as a record of the production-readiness and threat-modelling analysis
+> (ADRs, RLS, KMS, compliance). Nothing here is in progress.
 
 > Status: **decisions locked** (grilled 2026-07-04). This plan takes the project
 > from *portfolio-grade* (boundaries **documented**) to a *production system for
