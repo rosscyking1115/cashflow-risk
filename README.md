@@ -18,6 +18,12 @@ plain-English action brief — every score with a reason.
 It spans a **Python analytics engine**, **applied data science** on late-payment
 risk, and a **security/privacy posture** built for confidential financial data.
 
+> Part of my responsible-fintech cluster, alongside
+> [responsible-neobank-growth](https://github.com/rosscyking1115/responsible-neobank-growth)
+> and
+> [cited-market-brief-agent](https://github.com/rosscyking1115/cited-market-brief-agent).
+> Full project map → [profile](https://github.com/rosscyking1115).
+
 > [!NOTE]
 > This is a reference project, not a commercial product. It is not for sale, holds
 > no real customer data, and the phased product roadmap and production-pivot plan
