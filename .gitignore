@@ -29,6 +29,14 @@ data/
 .DS_Store
 Thumbs.db
 
-# Node (frontend, added in Phase 2)
+# Node (frontend)
 node_modules/
 .next/
+
+# Internal planning + agent instructions — kept local, not published
+/AGENTS.md
+/web/AGENTS.md
+/web/CLAUDE.md
+/docs/PLAN.md
+/docs/production-readiness.md
+/docs/phase0/
