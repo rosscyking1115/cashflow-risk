@@ -156,8 +156,8 @@ web build, Alembic migration on schema change).
 
 ## 5. Sequencing — two tiers
 
-Full production-grade for confidential data is expensive, and **the product has not
-passed Gate 1 (demand)**. Don't build the whole thing before there's pull. Stage it:
+Full production hardening for confidential data is expensive, and **the product has
+not passed Gate 1 (demand)**. Don't build the whole thing before there's pull. Stage it:
 
 **Tier 0 — Pilot-safe (accept the first ≤5 design partners' real data).**
 The minimum to lawfully and safely onboard *one* real business. Blocks the first
