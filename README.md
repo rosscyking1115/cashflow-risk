@@ -1,22 +1,17 @@
 # Cashflow Risk Intelligence
 
-> Full-stack engineering · applied fintech data science · production-grade security.
-
 [![CI](https://github.com/rosscyking1115/cashflow-risk/actions/workflows/ci.yml/badge.svg)](https://github.com/rosscyking1115/cashflow-risk/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![Typed: mypy strict](https://img.shields.io/badge/mypy-strict-blue.svg)](https://mypy-lang.org/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-A worked, end-to-end project that models a real problem: which of a UK small
-business's unpaid invoices could break its cash runway, **when** the risk appears,
-and **what to do this week** about it. From an invoice CSV it forecasts a 13-week
-cash runway, ranks invoices by expected cash at risk (late-payment probability ×
-amount), enriches customer risk with Companies House filings, and writes a
-plain-English action brief — every score with a reason.
-
-It spans a **Python analytics engine**, **applied data science** on late-payment
-risk, and a **security/privacy posture** built for confidential financial data.
+Which of a small business's unpaid invoices could break its cash runway, when the
+shortfall lands, and which ones to chase this week. Give it a CSV of invoices and
+it forecasts a 13-week runway, ranks the invoices by expected cash at risk
+(probability of late payment × amount outstanding), folds Companies House filings
+into each customer's score, and writes a short action brief. Every score comes
+with the reason behind it.
 
 > Part of my responsible-fintech cluster, alongside
 > [responsible-neobank-growth](https://github.com/rosscyking1115/responsible-neobank-growth)
@@ -27,66 +22,29 @@ risk, and a **security/privacy posture** built for confidential financial data.
 > [!NOTE]
 > This is a reference project, not a commercial product. It is not for sale, holds
 > no real customer data, and the phased product roadmap and production-pivot plan
-> in [`docs/`](docs/) are **frozen** — kept as a record of the planning and
+> in [`docs/`](docs/) are frozen. They are kept as a record of the planning and
 > threat-modelling, not as work in progress.
 
 **[▶ Live demo](https://cashflow-web-sidu.onrender.com/)** — opens on a synthetic
-dataset, no sign-in. (Free-tier host; the first load may take ~30s to wake.)
+dataset, no sign-in. (Free-tier host, so the first load can take about 30 seconds
+to wake.)
 
 ![The dashboard on synthetic data: a 13-week cash-runway readout and forecast, the invoices ranked by cash at risk with plain-English drivers, and the week's recommended action.](docs/images/dashboard.png)
 
-<p align="center"><em>The dashboard on synthetic demo data — runway forecast, cash-at-risk ranking, and the weekly action. Every score carries its reason.</em></p>
+<p align="center"><em>The dashboard on synthetic demo data: runway forecast, cash-at-risk ranking, and the weekly action.</em></p>
 
-## What it covers
+## What it does
 
-| Area | Highlights |
-|---|---|
-| **Full-stack** | Pure-Python analytics engine behind a FastAPI service; PostgreSQL system-of-record with SQLAlchemy + Alembic migrations; Next.js/React/Tailwind dashboard; Clerk auth; deployed on Render; GitHub Actions CI (ruff, mypy-strict, pytest, migration-apply-and-drift check, Next build) with SHA-pinned actions |
-| **Applied data science** | Leakage-safe as-of feature store; a pinned late-payment label with censoring; **rolling-origin, group-aware backtest**; the right metrics for a rare, ranked problem (PR-AUC vs prevalence, top-decile precision, calibration); a rules → logistic → gradient-boosted bake-off tracked in MLflow; an **anti-circular synthetic data generator** (latent mechanism the model never sees) |
-| **Security & governance** | Multi-tenant isolation + RBAC with cross-tenant refusal (tested); STRIDE threat model + DPIA + privacy notice; PII-scrubbed error reporting **enforced by a test**; CSV-injection-safe exports; upload hardening; append-only audit log; retention auto-purge; self-serve data export/delete |
-| **Engineering discipline** | Test-first throughout (150+ tests), strict typing, deep-module design, honest documentation of what does and doesn't work |
-
-On the synthetic data the fitted models **tie** the rules baseline, and the
-evaluation **explains why**: a latent "health-oracle" ceiling shows the predictive
-signal is a macro factor that is unobservable at prediction time without leakage.
-Models are measured with a rolling-origin, group-aware backtest rather than a
-headline number. Full write-up, with the numbers:
-[docs/model-evaluation.md](docs/model-evaluation.md).
-
-## Features
-
-- **13-week cash forecast** from an invoice ledger, timed by a risk-adjusted view
-  of when each invoice will actually be paid.
-- **Invoice & customer risk ranking** by expected cash at risk (amount × probability
-  of late payment), each with plain-English drivers.
-- **Action brief** — a deterministic, readable summary of the week's chase list and
-  the runway impact.
-- **Companies House enrichment** — a customer's overdue filings, insolvency, and
-  charges feed the late-payment score; a daily job keeps the signals fresh.
-- **Multi-tenant with real RBAC** — owners and invited accountants, every query
-  scoped to a tenant, cross-tenant access refused (see Security & privacy below).
-
-## Security & privacy
-
-The project treats confidential financial data as a first-class constraint —
-security and privacy are build-time requirements, several of them enforced by
-tests:
-
-- **Multi-tenant isolation & RBAC** — every query is scoped to a tenant; owners
-  and invited accountants have distinct roles; cross-tenant access is refused
-  (and that refusal is a test).
-- **Data minimisation** — raw uploads are never stored, only derived results.
-- **No sensitive data in logs or error reports** — Sentry runs with no PII, no
-  local variables, no request bodies, and `before_send` redaction; a test asserts
-  no financial fields reach the logs.
-- **Safe by construction** — CSV-formula-injection-escaped exports, upload
-  hardening (size/row limits, content sniffing), an append-only audit log,
-  self-serve export/delete, and a 24-month retention purge.
-
-The posture is documented, not just implemented: a
-[STRIDE threat model](docs/threat-model.md), a
-[DPIA](docs/dpia.md), a [privacy notice](docs/privacy-notice.md), and a
-[security policy](SECURITY.md).
+- Forecasts 13 weeks of cash from an invoice ledger, timing each invoice by when
+  it is likely to be paid rather than when it is due.
+- Ranks invoices and customers by expected cash at risk, so a large invoice from a
+  mostly-reliable customer can outrank a small one from a bad payer.
+- Writes an action brief: the chase list for the week and what it does to the
+  runway.
+- Reads a customer's Companies House record (overdue accounts, insolvency,
+  charges) into their late-payment score, refreshed by a daily job.
+- Separates tenants. Owners and invited accountants get different roles, every
+  query is scoped to a business, and a cross-tenant read is refused.
 
 ## How it works
 
@@ -97,17 +55,51 @@ The posture is documented, not just implemented: a
                                       └──> Sentry (errors, PII-scrubbed)
 ```
 
-The engine is a pure-Python analytics core (leakage-safe feature store, forecast
-baselines, a rules-based risk scorer) exposed over FastAPI. PostgreSQL is the sole
-system of record; only derived results are stored, never raw uploads. A separate,
-training-time-only lane holds the risk-model bake-off (rules → logistic →
-gradient-boosted) with MLflow tracking — it never ships in the runtime image.
+The engine is plain Python: a leakage-safe feature store, forecast baselines and a
+rules-based scorer, put behind FastAPI. PostgreSQL is the only system of record,
+and it holds derived results only. Uploads are parsed and discarded. The
+risk-model bake-off (rules, logistic regression, gradient boosting) runs at
+training time, is tracked in MLflow, and never ships in the runtime image.
+
+Stack: Python 3.12, FastAPI, SQLAlchemy, Alembic, PostgreSQL, scikit-learn,
+Next.js, React, Tailwind, Clerk, Sentry, Render, GitHub Actions.
+
+## Model evaluation
+
+On the synthetic data the fitted models tie the rules baseline, and the evaluation
+says why. A health oracle, read straight from the generator's latent truth, only
+clears prevalence by 0.099 mean PR-AUC lift, so the ceiling is low to begin with.
+Most of what is left is a macro factor you cannot see at issue time without
+leaking the answer. Models are scored on a rolling-origin, group-aware backtest
+instead of a single headline number.
+[docs/model-evaluation.md](docs/model-evaluation.md) has the workings.
+
+## Security and privacy
+
+An invoice ledger is commercially sensitive, and where the customers are sole
+traders it is personal data too. Several of the controls are enforced by tests
+rather than documented and hoped for:
+
+- Every query is scoped to a tenant, and a test asserts that one tenant cannot
+  read another's run even with a guessed id.
+- Raw uploads are never stored. Only derived results are.
+- Sentry runs with no PII, no local variables and no request bodies, plus
+  `before_send` redaction. A test uploads marker values and checks that none of
+  them reach the logs.
+- Exports escape cells starting with `=`, `+`, `-` or `@`, so a spreadsheet cannot
+  execute them. Uploads have size and row limits and are content-sniffed rather
+  than trusted by MIME type. There is an append-only audit log, self-serve export
+  and delete, and a 24-month retention purge.
+
+The reasoning is written down: a [STRIDE threat model](docs/threat-model.md), a
+[DPIA](docs/dpia.md), a [privacy notice](docs/privacy-notice.md) and a
+[security policy](SECURITY.md).
 
 ## Getting started
 
-**Prerequisites:** [uv](https://docs.astral.sh/uv/) (Python 3.12) and Node.js 20+.
+You need [uv](https://docs.astral.sh/uv/) (Python 3.12) and Node.js 20+.
 
-Run the engine and see the action brief on synthetic data:
+Run the engine and print an action brief for a synthetic business:
 
 ```bash
 uv sync                          # create the venv + install deps
@@ -115,14 +107,14 @@ uv run pytest                    # run the test suite
 uv run python scripts/demo.py    # print an action brief for a synthetic SME
 ```
 
-See the model evaluation for yourself:
+Reproduce the model evaluation:
 
 ```bash
 uv run python scripts/eval_risk_baseline.py   # rules-baseline metrics
 uv run python scripts/bakeoff_risk.py         # rules vs logistic vs GBM, backtested
 ```
 
-Run the full dashboard (two processes):
+Run the dashboard, which needs two processes:
 
 ```bash
 # 1. API. CASHFLOW_ENV=dev enables a local token so uploads work without a
@@ -133,18 +125,19 @@ CASHFLOW_ENV=dev uv run uvicorn cashflow_risk.api:app --port 8000
 cd web && npm install && npm run dev   # http://localhost:3000
 ```
 
-The dashboard opens on the public demo. Use **Invoices CSV** to analyse a sample
-export — the tenant is always taken from the token, never client input.
+It opens on the public demo. **Invoices CSV** analyses your own export; the tenant
+comes from the token, never from client input.
 
 > [!NOTE]
-> Synthetic data is for demonstration and pipeline tests only. Predictive claims
-> are made against real UK payment-practice benchmarks, never synthetic data
-> alone (see [docs/adr/0002](docs/adr)).
+> The synthetic data is for the demo and for pipeline tests. Predictive claims are
+> checked against real UK payment-practice benchmarks, never against synthetic
+> data alone (see [docs/adr/0002](docs/adr)).
 
 ## Configuration
 
-The service reads configuration from the environment; secure defaults mean it runs
-locally with none of it set.
+Configuration comes from the environment. The defaults are safe, so it runs
+locally with none of it set. Copy [`.env.example`](.env.example) to `.env` to
+change anything.
 
 | Variable | Purpose |
 |---|---|
@@ -159,8 +152,8 @@ locally with none of it set.
 
 ## Database and migrations
 
-Local dev auto-creates SQLite tables on startup. Managed databases use Alembic,
-and the API runs `alembic upgrade head` on deploy:
+Local dev creates the SQLite tables on startup. Managed databases use Alembic, and
+the API runs `alembic upgrade head` when it deploys:
 
 ```bash
 uv run alembic upgrade head                              # apply migrations
@@ -175,15 +168,17 @@ uv run ruff check .    # lint
 uv run mypy            # type-check (strict)
 ```
 
-Every push and pull request runs all of the above plus a migrations-apply-and-match
-check (`alembic upgrade head` + `alembic check`) and the Next.js production build
-([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+Every push and pull request runs those, plus a check that the migrations apply to
+an empty database and still match the models (`alembic upgrade head` and
+`alembic check`), plus the Next.js production build. See
+[.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ## Deployment
 
-The API, dashboard, managed Postgres, and a daily maintenance cron deploy to Render
-from [`render.yaml`](render.yaml) as a blueprint — how the [live demo](https://cashflow-web-sidu.onrender.com/)
-is hosted. Details in [docs/deployment.md](docs/deployment.md).
+The API, dashboard, managed Postgres and a daily maintenance cron deploy to Render
+from [`render.yaml`](render.yaml) as a blueprint, which is how the
+[live demo](https://cashflow-web-sidu.onrender.com/) is hosted. Steps in
+[docs/deployment.md](docs/deployment.md).
 
 ## Project layout
 
@@ -191,16 +186,16 @@ is hosted. Details in [docs/deployment.md](docs/deployment.md).
 |---|---|
 | `src/cashflow_risk/` | The engine: `domain`, `datagen`, `features`, `forecasting`, `risk`, `reporting`, `ingestion`, `enrichment`, `db`, `auth`, `api` |
 | `web/` | Next.js dashboard |
-| `scripts/` | `demo.py`, the model evaluation + risk bake-off, and the daily maintenance job |
+| `scripts/` | `demo.py`, the model evaluation and risk bake-off, and the daily maintenance job |
 | `alembic/` | Database migrations |
-| `docs/` | Architecture, the security/privacy docs below, and the (frozen) plan |
+| `docs/` | Architecture, the security and privacy docs, and the frozen plan |
 
 ## Documentation
 
-- [docs/model-evaluation.md](docs/model-evaluation.md) — how the risk model is measured, and the honest result
+- [docs/model-evaluation.md](docs/model-evaluation.md) — how the risk model is measured, and what it scored
 - [docs/architecture.md](docs/architecture.md) — architecture and its trade-offs
 - [CONTEXT.md](CONTEXT.md) — the domain model and ubiquitous language
 - [SECURITY.md](SECURITY.md) — security posture and vulnerability reporting
 - [docs/threat-model.md](docs/threat-model.md) — STRIDE threat model
 - [docs/security_privacy.md](docs/security_privacy.md) · [docs/dpia.md](docs/dpia.md) · [docs/privacy-notice.md](docs/privacy-notice.md)
-- [docs/PLAN.md](docs/PLAN.md) · [docs/production-readiness.md](docs/production-readiness.md) — the **frozen** product roadmap and production-pivot decisions (a record of the earlier planning; not in progress)
+- [docs/PLAN.md](docs/PLAN.md) · [docs/production-readiness.md](docs/production-readiness.md) — the frozen product roadmap and production-pivot decisions, kept as a record of the earlier planning
