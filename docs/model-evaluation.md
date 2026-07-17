@@ -1,22 +1,19 @@
 # Model evaluation — an honest read on late-payment risk
 
-> The point of this note is *methodology*, not a leaderboard number. It shows how
-> the late-payment risk model is measured — leakage-safe features, a rolling-origin
-> group-aware backtest, and metrics matched to the decision — and reports the
-> result plainly, including where the model **does not** beat its baseline and
-> exactly why. All numbers here are on **synthetic** data and are pipeline checks,
-> never predictive claims (see [adr/0002](adr)).
+> How the late-payment risk model is measured: leakage-safe features, a
+> rolling-origin group-aware backtest, and metrics that match the decision being
+> made. It reports where the model beats its baseline and where it does not. Every
+> number here is on synthetic data and is a pipeline check, not a predictive claim
+> (see [adr/0002](adr)).
 
-## TL;DR
+## Summary
 
-On credibly-generated synthetic data, at the pinned *issue-time* prediction origin,
-the fitted models (logistic, gradient-boosted) **tie the transparent rules baseline
-and both sit near the prevalence line**. That is the correct, expected result — and
-the project *explains it*: a diagnostic "health-oracle" that reads the generator's
-own latent truth only clears prevalence by **+0.099 mean PR-AUC lift**, so the
-predictability ceiling on this data is low. The remaining signal is a macro factor
-that is **unobservable at issue time without leakage**. The model is measured
-honestly rather than tuned until a number looks good.
+At the issue-time prediction origin, the fitted models (logistic and
+gradient-boosted) tie the rules baseline, and both sit near the prevalence line.
+That is what this data allows. A diagnostic health oracle, which reads the
+generator's own latent truth, only clears prevalence by 0.099 mean PR-AUC lift, so
+the ceiling is low before any model starts. What remains is a macro factor you
+cannot observe at issue time without leaking the label.
 
 ## The prediction problem
 
@@ -113,12 +110,12 @@ this synthetic world by construction**.
 
 ## What this would mean on real data
 
-The harness is built to register a real win the moment observable signal exists:
-richer customer histories, real Companies House distress signals correlated with
-actual insolvency, and (if the origin were relaxed to score *open* invoices as they
-age) the strong `days_overdue` signal. The methodology — leakage-safe features,
-rolling-origin group-aware validation, calibration, honest baselines — is exactly
-what would make a real-data claim defensible. That defensibility is the deliverable.
+The harness would register a win as soon as observable signal exists: richer
+customer histories, real Companies House distress signals that track actual
+insolvency, and, if the origin were relaxed to score open invoices as they age,
+`days_overdue`, which is strong. The same setup would carry a real-data claim:
+leakage-safe features, rolling-origin group-aware validation, calibration, and a
+baseline that is genuinely hard to beat.
 
 ## Reproduce
 
