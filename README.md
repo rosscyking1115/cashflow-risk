@@ -20,10 +20,8 @@ with the reason behind it.
 > Full project map → [profile](https://github.com/rosscyking1115).
 
 > [!NOTE]
-> This is a reference project, not a commercial product. It is not for sale, holds
-> no real customer data, and the phased product roadmap and production-pivot plan
-> in [`docs/`](docs/) are frozen. They are kept as a record of the planning and
-> threat-modelling, not as work in progress.
+> This is a reference project, not a commercial product. It is not for sale and
+> holds no real customer data; the demo runs on synthetic data.
 
 **[▶ Live demo](https://cashflow-web-sidu.onrender.com/)** — opens on a synthetic
 dataset, no sign-in. (Free-tier host, so the first load can take about 30 seconds
@@ -188,7 +186,7 @@ from [`render.yaml`](render.yaml) as a blueprint, which is how the
 | `web/` | Next.js dashboard |
 | `scripts/` | `demo.py`, the model evaluation and risk bake-off, and the daily maintenance job |
 | `alembic/` | Database migrations |
-| `docs/` | Architecture, the security and privacy docs, and the frozen plan |
+| `docs/` | Architecture, and the security and privacy docs |
 
 ## Documentation
 
@@ -198,4 +196,3 @@ from [`render.yaml`](render.yaml) as a blueprint, which is how the
 - [SECURITY.md](SECURITY.md) — security posture and vulnerability reporting
 - [docs/threat-model.md](docs/threat-model.md) — STRIDE threat model
 - [docs/security_privacy.md](docs/security_privacy.md) · [docs/dpia.md](docs/dpia.md) · [docs/privacy-notice.md](docs/privacy-notice.md)
-- [docs/PLAN.md](docs/PLAN.md) · [docs/production-readiness.md](docs/production-readiness.md) — the frozen product roadmap and production-pivot decisions, kept as a record of the earlier planning
