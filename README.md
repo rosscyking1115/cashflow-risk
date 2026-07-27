@@ -9,9 +9,10 @@
 Which of a small business's unpaid invoices could break its cash runway, when the
 shortfall lands, and which ones to chase this week. Give it a CSV of invoices and
 it forecasts a 13-week runway, ranks the invoices by expected cash at risk
-(probability of late payment × amount outstanding), folds Companies House filings
+(late-payment risk score × amount outstanding), folds Companies House filings
 into each customer's score, and writes a short action brief. Every score comes
-with the reason behind it.
+with the reason behind it. The score orders the chase list; it is a ranking
+score, not a calibrated probability, and the repo measures how far off it is.
 
 > Part of my responsible-fintech cluster, alongside
 > [responsible-neobank-growth](https://github.com/rosscyking1115/responsible-neobank-growth)
@@ -19,9 +20,14 @@ with the reason behind it.
 > [cited-market-brief-agent](https://github.com/rosscyking1115/cited-market-brief-agent).
 > Full project map → [profile](https://github.com/rosscyking1115).
 
-> [!NOTE]
-> This is a reference project, not a commercial product. It is not for sale and
-> holds no real customer data; the demo runs on synthetic data.
+> [!IMPORTANT]
+> **Synthetic data only, and nothing here is advice.** This is a reference
+> project, not a commercial product. It is not for sale, holds no real customer
+> data, and every figure in it — the demo, the forecasts, the risk scores, the
+> evaluation — comes from a seeded generator. Its output is decision support, not
+> accounting, tax, legal, credit or investment advice, and not a recommendation
+> about any company. [docs/CREDIBILITY.md](docs/CREDIBILITY.md) states exactly
+> what the numbers may and may not be read as.
 
 **[▶ Live demo](https://cashflow-web-sidu.onrender.com/)** — opens on a synthetic
 dataset, no sign-in. (Free-tier host, so the first load can take about 30 seconds
@@ -62,15 +68,49 @@ training time, is tracked in MLflow, and never ships in the runtime image.
 Stack: Python 3.12, FastAPI, SQLAlchemy, Alembic, PostgreSQL, scikit-learn,
 Next.js, React, Tailwind, Clerk, Sentry, Render, GitHub Actions.
 
+## Fully typed, and the type check can fail the build
+
+The engine runs under **`mypy --strict`** — `strict = true` in
+[`pyproject.toml`](pyproject.toml), not a handful of strict-ish flags — across the
+whole `cashflow_risk` package, 44 source files, no `ignore_errors` and no
+per-module opt-outs beyond four `ignore_missing_imports` entries for third-party
+libraries that ship no stubs.
+
+It is a gate, not a habit. CI runs `uv run mypy` as its own step on every push and
+every pull request, with no `continue-on-error`, so a type error fails the build
+and the branch does not merge. Same for `ruff check` and the test suite. Run it
+yourself:
+
+```bash
+uv run mypy        # Success: no issues found in 44 source files
+```
+
+Scope worth knowing: the check covers the published package. `tests/` and
+`scripts/` are outside it.
+
 ## Model evaluation
 
-On the synthetic data the fitted models tie the rules baseline, and the evaluation
-says why. A health oracle, read straight from the generator's latent truth, only
-clears prevalence by 0.099 mean PR-AUC lift, so the ceiling is low to begin with.
-Most of what is left is a macro factor you cannot see at issue time without
-leaking the answer. Models are scored on a rolling-origin, group-aware backtest
-instead of a single headline number.
-[docs/model-evaluation.md](docs/model-evaluation.md) has the workings.
+On the synthetic data **no fitted model beats the rules baseline**, and the
+evaluation says why. A health oracle, read straight from the generator's latent
+truth, clears prevalence by only 0.100 mean PR-AUC lift, so the ceiling is low to
+begin with. Most of what is left is a macro factor you cannot see at issue time
+without leaking the answer.
+
+Models are scored on a rolling-origin, group-aware backtest that is **purged by
+the label horizon** — a training invoice is dropped unless its outcome had already
+resolved when the test window opened. That purge is not decoration. Without it,
+74.5% of training rows carried an outcome from inside the test period, and the
+fitted models showed an edge that vanished when it was removed: logistic fell from
++0.048 to +0.021 and gradient boosting from +0.036 to below prevalence, while the
+rules control moved +0.000. The scores are also **not calibrated** — mean ECE
+0.212, over-predicting lateness by about 20 percentage points — so they rank the
+chase list and nothing more. [docs/model-evaluation.md](docs/model-evaluation.md)
+has the workings and both arms side by side.
+
+That is the honest result and it is the reason to look at this repo rather than a
+reason not to: the evaluation was capable of detecting that its own models had no
+edge, and it did. The purge, the matched-window comparison and the rules control
+are the machinery that made a negative result findable instead of comfortable.
 
 ## Security and privacy
 
@@ -89,9 +129,11 @@ rather than documented and hoped for:
   than trusted by MIME type. There is an append-only audit log, self-serve export
   and delete, and a 24-month retention purge.
 
-The reasoning is written down: a [STRIDE threat model](docs/threat-model.md), a
-[DPIA](docs/dpia.md), a [privacy notice](docs/privacy-notice.md) and a
-[security policy](SECURITY.md).
+The reasoning is written down: a [STRIDE threat model](docs/threat-model.md) and a
+[security policy](SECURITY.md), plus a [DPIA](docs/dpia.md) and a
+[privacy notice](docs/privacy-notice.md) — both drafted to the point where the
+bracketed fields need a real legal entity, and both labelled as drafts, because
+processing synthetic data does not trigger either one.
 
 ## Getting started
 
@@ -127,9 +169,11 @@ It opens on the public demo. **Invoices CSV** analyses your own export; the tena
 comes from the token, never from client input.
 
 > [!NOTE]
-> The synthetic data is for the demo and for pipeline tests. Predictive claims are
-> checked against real UK payment-practice benchmarks, never against synthetic
-> data alone (see [docs/adr/0002](docs/adr)).
+> The synthetic data is the only data. Every number in this repository comes from
+> a seeded generator, so the engineering claims hold as written while the
+> magnitudes are illustrative and nothing here is evidence of predictive skill on
+> a real ledger. [docs/CREDIBILITY.md](docs/CREDIBILITY.md) sorts every figure
+> into what it can and cannot support.
 
 ## Configuration
 
@@ -188,8 +232,20 @@ from [`render.yaml`](render.yaml) as a blueprint, which is how the
 | `alembic/` | Database migrations |
 | `docs/` | Architecture, and the security and privacy docs |
 
+## Data sources and licence
+
+The code is MIT ([LICENSE](LICENSE)). The only external data source is the
+**Companies House Public Data API**, read live and never redistributed here.
+Companies House data is published under the
+[Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/);
+anything derived from it in this project carries that licence and this
+attribution: *Contains public sector information licensed under the Open
+Government Licence v3.0.* Every other figure in the repository is generated, not
+sourced.
+
 ## Documentation
 
+- [docs/CREDIBILITY.md](docs/CREDIBILITY.md) — what each number may and may not be read as
 - [docs/model-evaluation.md](docs/model-evaluation.md) — how the risk model is measured, and what it scored
 - [docs/architecture.md](docs/architecture.md) — architecture and its trade-offs
 - [CONTEXT.md](CONTEXT.md) — the domain model and ubiquitous language
