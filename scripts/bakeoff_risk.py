@@ -1,25 +1,34 @@
-"""Rules-vs-logistic bake-off over a rolling-origin backtest (PLAN §7/§8.3).
+"""Rules-vs-logistic-vs-GBM bake-off over a purged rolling-origin backtest.
 
     uv run python scripts/bakeoff_risk.py [--track] [--tracking-uri URI]
 
-Runs both scorers over identical walk-forward folds on synthetic data, across
+Runs every scorer over identical walk-forward folds on synthetic data, across
 seeds, and prints pooled PR-AUC (with lift over prevalence), top-decile precision,
-calibration, and the cold-start slice — then a Gate-3 verdict.
+calibration, and the cold-start slice — then a verdict against a pre-declared
+margin.
+
+The folds are **purged**: a training row whose 120-day label had not yet resolved
+when the test window opened is dropped, because on the day the model would really
+have been fitted that outcome was still unknown. The unpurged arm is printed
+alongside on the *same* test windows, so the difference is the leak and nothing
+else.
 
 ``--track`` logs every scorer x seed as an MLflow run (default store: a local
 ``sqlite:///mlflow.db`` — gitignored, no server), so the rules → logistic →
 (maybe) LightGBM progression stays auditable. Tracking is training-time only:
 mlflow-skinny comes from the ``train`` dependency group, never the runtime image.
 
-Honest headline: on this generator the fitted model ties or narrowly beats the
-rules baseline, with or without Companies House signals — and the printed
-"ceiling" row shows why. A *perfect* observer of latent health (the oracle, read
+Honest headline: on this generator, with the folds purged, **no fitted model beats
+the rules baseline** — with or without Companies House signals, and gradient
+boosting falls below prevalence. The printed "ceiling" row shows why. A *perfect*
+observer of latent health (the oracle, read
 straight from the latent table — allowed in a diagnostic script, never as a model
 feature) only clears prevalence by ~0.10 mean lift on these folds: everything
 else is the contemporaneous macro factor, which is unobservable at issue time
 without leakage (docs/adr/0002). CH signals are a noisy subset of the health
-ceiling, so no scorer can blow past it here. Gate 3 is therefore decided on real
-data (PLAN §8.3); this bake-off proves the pipeline, folds, and metrics work.
+ceiling, so no scorer can blow past it here. These are synthetic numbers — they
+show the pipeline, folds and metrics work; they are not evidence of predictive
+skill on real ledgers.
 """
 
 from __future__ import annotations
@@ -33,6 +42,7 @@ from cashflow_risk.datagen.generator import GeneratorConfig, generate_dataset
 from cashflow_risk.risk.backtest import (
     BacktestResult,
     FitAndScore,
+    Fold,
     rolling_origin_folds,
     run_backtest,
 )
@@ -43,6 +53,27 @@ from cashflow_risk.risk.model import LatePaymentModel
 SEEDS = (1, 3, 7, 11, 42)
 HORIZON_DAYS = 120
 N_FOLDS = 4
+MARGIN = 0.10  # pre-declared: the fitted rung must beat rules by this to earn its keep
+
+
+def matched_folds(examples: list[TrainingExample]) -> tuple[list[Fold], list[Fold]]:
+    """Purged folds, and the unpurged folds over the *same* test windows.
+
+    Purging can leave an early fold with no trainable history, and that fold is
+    dropped. Comparing against all four unpurged folds would then compare two
+    different test sets, so the unpurged arm is restricted to the windows that
+    survived. Any difference between the arms is the training-label overlap.
+    """
+    purged = rolling_origin_folds(examples, purge_days=HORIZON_DAYS, n_folds=N_FOLDS)
+    windows = {id(f.test[0]) for f in purged}
+    # purge_days=0 is the deliberately leaky arm — the only place in the project
+    # that asks for one, and only so the leak can be measured against the purged run.
+    unpurged = [
+        f
+        for f in rolling_origin_folds(examples, purge_days=0, n_folds=N_FOLDS)
+        if f.test and id(f.test[0]) in windows
+    ]
+    return purged, unpurged
 
 
 def _rules(train: list[TrainingExample], test: list[TrainingExample]) -> list[float]:
@@ -118,7 +149,9 @@ def main() -> None:
     log = _make_logger(args.tracking_uri) if args.track else None
     scorers = _scorers()
 
-    print(f"\nRisk bake-off — {N_FOLDS}-fold rolling origin, issue-time, {HORIZON_DAYS}d horizon")
+    print(f"\nRisk bake-off — rolling origin, issue-time, {HORIZON_DAYS}d horizon")
+    print(f"Folds purged by {HORIZON_DAYS}d: a training row is dropped unless its label")
+    print("had already resolved when the test window opened.")
     print("(synthetic data — pipeline check, not a predictive claim)")
     cols = ("model", "n", "prev", "PR-AUC", "lift", "top10%", "ECE", "cold-AP")
     widths = (9, 5, 6, 7, 6, 7, 6, 8)
@@ -126,6 +159,8 @@ def main() -> None:
     print("  ".join(f"{c:>{w}}" for c, w in zip(cols, widths, strict=True)))
 
     lifts: dict[str, list[float]] = {}
+    leaky_lifts: dict[str, list[float]] = {}
+    fold_counts: list[tuple[int, int]] = []
     for seed in SEEDS:
         cfg = GeneratorConfig(seed=seed, n_customers=30, weeks=52)
         ds = generate_dataset(cfg)
@@ -160,16 +195,29 @@ def main() -> None:
 
         print(f"seed {seed}:")
         for suffix, examples in variants.items():
-            folds = rolling_origin_folds(examples, n_folds=N_FOLDS)
+            purged, unpurged = matched_folds(examples)
+            if not suffix:
+                fold_counts.append(
+                    (
+                        len(rolling_origin_folds(examples, purge_days=0, n_folds=N_FOLDS)),
+                        len(purged),
+                    )
+                )
             for name, scorer in scorers:
-                result = run_backtest(folds, scorer)
                 key = name + suffix
-                lift = result.pooled.average_precision - result.pooled.prevalence
-                lifts.setdefault(key, []).append(lift)
+                result = run_backtest(purged, scorer)
+                lifts.setdefault(key, []).append(
+                    result.pooled.average_precision - result.pooled.prevalence
+                )
+                leaky = run_backtest(unpurged, scorer)
+                leaky_lifts.setdefault(key, []).append(
+                    leaky.pooled.average_precision - leaky.pooled.prevalence
+                )
                 print(_row(key, result))
                 if log is not None:
                     log(key, seed, result)
-        ceiling = run_backtest(rolling_origin_folds(variants[""], n_folds=N_FOLDS), _oracle)
+        purged_plain, _ = matched_folds(variants[""])
+        ceiling = run_backtest(purged_plain, _oracle)
         lifts.setdefault("ceiling", []).append(
             ceiling.pooled.average_precision - ceiling.pooled.prevalence
         )
@@ -179,21 +227,32 @@ def main() -> None:
 
     print("-" * 72)
     means = {k: sum(v) / len(v) for k, v in lifts.items()}
+    leaky_means = {k: sum(v) / len(v) for k, v in leaky_lifts.items()}
     print(
         "mean PR-AUC lift over prevalence — "
         + ", ".join(f"{k} {v:+.3f}" for k, v in means.items())
     )
+    print(
+        "\nSame test windows, unpurged training sets (what the label overlap was worth):"
+    )
+    for k in leaky_means:
+        print(f"  {k:>12}  purged {means[k]:+.3f}   unpurged {leaky_means[k]:+.3f}"
+              f"   delta {leaky_means[k] - means[k]:+.3f}")
+    kept = ", ".join(f"{p}/{a}" for a, p in fold_counts)
+    print(f"\nFolds kept after purging (per seed): {kept}")
+
     fitted = [k for k in means if k.endswith("+CH") and k != "rules+CH" and k != "ceiling"]
     best = max(fitted, key=lambda k: means[k])
     margin = means[best] - means["rules+CH"]
-    verdict = "PASS" if margin >= 0.10 else "NOT MET"
+    verdict = "PASS" if margin >= MARGIN else "NOT MET"
     print(
-        f"\nGate 3 (best fitted rung [{best}] beats rules+CH by >=0.10 pooled PR-AUC "
-        f"lift): {verdict} (margin {margin:+.3f}).\n"
+        f"\nPre-declared margin (best fitted rung [{best}] beats rules+CH by "
+        f">={MARGIN:.2f} pooled PR-AUC lift): {verdict} (margin {margin:+.3f}).\n"
         f"Context: the health-oracle ceiling is {means['ceiling']:+.3f} mean lift — the\n"
         "most ANY health-proxy (CH included) can extract from these folds; the rest\n"
-        "of the signal is the issue-time-unobservable macro factor. Gate 3 is decided\n"
-        "on real data; synthetic numbers are pipeline checks, not claims.\n"
+        "of the signal is the issue-time-unobservable macro factor. Whether a fitted\n"
+        "model earns its keep is decided on real data; these synthetic numbers are\n"
+        "pipeline checks, not claims.\n"
     )
 
 

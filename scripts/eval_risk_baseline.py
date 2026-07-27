@@ -1,16 +1,17 @@
-"""Baseline evaluation report for the late-payment risk model (PLAN §7/§8.3).
+"""Baseline evaluation report for the late-payment risk model.
 
     uv run python scripts/eval_risk_baseline.py
 
 Scores the transparent rules baseline over credibly-generated synthetic data at
-the *pinned* prediction origin (invoice issue date, PLAN §6), across several
+the *pinned* prediction origin (the invoice issue date), across several
 seeds, and prints PR-AUC vs prevalence, top-decile precision, and calibration.
 
 The headline is deliberately honest: at issue-time origin the rules baseline sits
 close to the prevalence line — the customer's observed prior late-rate is a weak,
 sparse proxy for the latent payment health + macro factor the generator uses and
-never reveals (docs/adr/0002). That near-prevalence number is the floor Phase 3's
-fitted model (logistic → LightGBM) + macro/Companies House features must beat.
+never reveals (docs/adr/0002). That near-prevalence number is the floor any
+fitted model (logistic → LightGBM) with macro or Companies House features must
+beat.
 Synthetic metrics are pipeline checks, not predictive claims (only real data is).
 """
 
@@ -68,7 +69,7 @@ def main() -> None:
     print(
         "\nNear-zero lift is expected and is the point: at issue time the rules\n"
         "baseline has only sparse customer history to go on. This is the floor the\n"
-        "Phase 3 fitted model + macro/Companies House features must beat.\n"
+        "fitted model with macro or Companies House features must beat.\n"
     )
 
 
