@@ -57,8 +57,10 @@ SVG and CSS, which is why [`web/package.json`](../web/package.json) has four
 runtime dependencies.
 
 Design intent: a **calm financial control room** — fast to scan, serious enough for
-an accountant, never intimidating. Every score has a "why", every warning has an
-action, and uncertainty is always shown.
+an accountant, never intimidating. Every score has a "why" and every warning has an
+action. Scores carry a High/Medium/Low band, which is a discretisation of the
+score rather than an uncertainty interval — the dashboard shows no intervals, and
+saying otherwise would overstate it.
 
 ## Not yet built
 

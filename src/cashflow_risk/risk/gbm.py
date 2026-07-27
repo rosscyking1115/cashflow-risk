@@ -8,8 +8,10 @@ the *same* :func:`~cashflow_risk.risk.model.design_matrix` as the logistic
 model, so a bake-off difference is the model, never the features.
 
 Verdict to date (synthetic bake-off, ``scripts/bakeoff_risk.py``): it does NOT
-earn its keep — the generator's issue-time predictability ceiling binds long
-before model capacity does, and a few hundred training examples per fold is
+earn its keep. On purged folds it scores **-0.004 mean PR-AUC lift — below
+prevalence**, i.e. worse than the base rate, against +0.022 for the rules
+baseline. The generator's issue-time predictability ceiling binds long before
+model capacity does, and a few hundred training examples per fold is
 GBM-hostile territory anyway. The rung exists so the same bake-off can re-judge
 it the day real data arrives.
 

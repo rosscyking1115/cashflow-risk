@@ -7,8 +7,9 @@ plain-English "why". This is the baseline any fitted model must beat on
 held-out *real* data — synthetic performance proves nothing (docs/adr/0002).
 
 The 0–1 output is a **ranking score, not a calibrated probability**: measured mean
-ECE 0.212 on purged folds, systematically over-predicting lateness. It orders
-invoices correctly enough to drive a chase list; it does not tell you the odds.
+ECE 0.186 on purged folds (0.212 with Companies House signals), systematically
+over-predicting lateness. It orders invoices correctly enough to drive a chase
+list; it does not tell you the odds.
 Calibrating it (isotonic or Platt, fitted on a purged fold) is unfinished work.
 """
 

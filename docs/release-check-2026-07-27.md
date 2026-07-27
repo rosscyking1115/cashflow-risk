@@ -4,8 +4,9 @@ First audit of this repository. Thirteen-point checklist plus four repo-specific
 questions. Every number below was measured on the day, on this machine, from a
 clean run — none is copied from a badge or from a previous doc.
 
-Environment: Windows 11, Python 3.12, uv. Commit audited: `e31c589` (main, in sync
-with `origin/main`, clean tree at start).
+Environment: Windows 11, Python 3.12, uv. Commit audited at the start of round 1:
+`e31c589` (main, in sync with `origin/main`, clean tree). The fixes live on branch
+`audit/claims-vs-evidence-2026-07-27`.
 
 ---
 
@@ -122,10 +123,12 @@ later. A training row issued shortly before the test window therefore carried an
 outcome from *inside* that window: information nobody would have had on the day
 the model would really have been fitted.
 
-Measured: **74.5% of all training rows, across every fold and seed (4,227 → 1,076
-after purging)**, had a label that closed at or after the test window opened. The
-earliest fold was 100% overlapping — it has no legitimately trainable history at
-all.
+Measured: **69.7% of training rows on the surviving windows (3,552 → 1,076)** had a
+label that closed at or after the test window opened. The earliest fold was
+separately 100% overlapping — it has no legitimately trainable history at all and
+is dropped entirely. (Round 2 first published 74.5%, which counted the dropped
+fold's rows as purged too. That mixes fold-dropping with row-purging; 69.7% is the
+like-for-like figure and the one the script prints.)
 
 The documentation asserted the opposite. `docs/model-evaluation.md` said *"a fold
 is never trained on its own future"*, which was false as written, and
@@ -408,6 +411,80 @@ refactor is behaviour-preserving · CRLF churn from round 1 confirmed still
 reverted, all modified files LF, diff is one-line changes where one-line changes
 were made.
 
+---
+
+## Round 3 — independent review, and what it caught
+
+After the PR was opened, an independent reviewer was given the corrected numbers
+and asked to find what rounds 1 and 2 missed. It found seven further defects,
+including two of mine that changed published figures. Recording them here because
+an audit that does not audit itself is the thing this document exists to argue
+against.
+
+### The reviewer's two numeric catches, both confirmed by re-measurement
+
+**1. The calibration table was the wrong scorer.** Round 2 published mean ECE
+0.212 as *"the shipped rules scorer"*. It is not — the measurement script passed
+`signals=ds.company_signals`, so it measured **rules + Companies House**. Plain
+rules is **0.186**. Both are now reported, because the runtime uses CH signals when
+`COMPANIES_HOUSE_API_KEY` is set and plain rules when it is not, so both genuinely
+ship. The qualitative conclusion is unchanged; the attribution was wrong on nine
+surfaces and is corrected on all of them.
+
+**2. `+0.020 → −0.012` mixed two protocols.** The +0.020 came from the *original*
+all-four-unpurged-folds run. The matched-window unpurged margin is **+0.003**.
+Presenting +0.020 and −0.012 as a before-and-after pair, directly beneath a
+matched-window table, commits precisely the error the matched-window design exists
+to prevent. Now stated as +0.003 → −0.012 like-for-like, with +0.020 labelled as
+the older protocol's number.
+
+The same class of error produced the **74.5%** overlap figure, which counted the
+dropped fold's rows as purged. Like-for-like it is **69.7%**.
+
+### The other five
+
+3. **The gate's baseline was misnamed.** `model-evaluation.md` said the margin was
+   against *"rules"*; the script computes it against **rules+CH**. Against plain
+   rules the best fitted rung is marginally *better*, so the sentence was false as
+   written. The comparison is within a feature variant, and now says so.
+4. **A surviving overclaim in `risk/model.py`** — *"this ties the rules baseline …
+   the lift is expected once real Companies House distress signals join the
+   features."* Round 2's own disposition table withdrew the near-identical
+   sentence from `bakeoff_risk.py` and missed this one. Its second clause is also
+   refuted by the CH arm that already exists: logistic+CH loses to rules+CH by
+   more than logistic loses to rules.
+5. **The API schema still said `probability`.** Every human-readable surface was
+   relabelled; the machine-readable contract was not. The field keeps its name for
+   wire compatibility but now carries an OpenAPI description stating it is a
+   ranking score and what its ECE is.
+6. **`architecture.md` claimed "uncertainty is always shown".** Nothing on the
+   dashboard shows an interval. The High/Medium/Low band is a discretisation of
+   the score. Corrected — the same wording was caught in the DPIA in round 2 and
+   not swept for elsewhere.
+7. **`evaluation.py` was silent where it should speak** — it defines ECE and says
+   *"'70%' means 70%"* without recording that this model fails that test. It is
+   the module that computes the number.
+
+Also fixed: `gbm.py` did not mention that GBM now scores below prevalence, and the
+figures the model card promised were reproducible (Brier, mean predicted, the
+overlap percentage) were printed by nothing. `scripts/bakeoff_risk.py` now prints
+all of them, so the claim is true rather than aspirational.
+
+### What the reviewer confirmed
+
+- Both eval scripts reproduce their published tables exactly.
+- The purge guard **can** fail: monkeypatching `rolling_origin_folds` to ignore
+  `purge_days` fails 5 of 7 purge tests, the guard reporting 683 leaking rows.
+- gbm's own lift (+0.036 → −0.004) is correctly attributed everywhere; the
+  conflation that existed was the protocol one above, not that one.
+- No surviving claim that the data is real or benchmarked, no advice claim, no
+  "production-grade" phrasing.
+
+### Known remaining gap
+
+The purge guard is pinned to `seed=7, n_customers=30, weeks=52`. A config change
+that made purging vacuous would not be caught. Recorded rather than fixed.
+
 ## Reproduce this audit
 
 ```bash
@@ -418,4 +495,6 @@ uv run python scripts/eval_risk_baseline.py   # rules vs prevalence
 uv run python scripts/bakeoff_risk.py         # purged vs unpurged, matched windows
 ```
 
-Nothing was committed or pushed. All changes are left in the working tree.
+Round 1 and 2 changes were left in the working tree; they were committed to
+`audit/claims-vs-evidence-2026-07-27` and published as PR #10 after Ross approved
+the content and, separately, the publication.

@@ -6,8 +6,12 @@ The right yardsticks for a rare, ranked-action problem — not accuracy:
   trade-off, judged against the base rate a coin-flip would score.
 - **Top-decile precision**, tied to a realistic *chase capacity* (~10 invoices a
   week): of the ones we'd actually chase, how many were truly at risk.
-- **Calibration** (Brier score + expected calibration error): are the
-  probabilities honest, so "70%" means 70%.
+- **Calibration** (Brier score + expected calibration error): would a stated
+  score be honest as a probability, so that "70%" means 70%? For this project the
+  answer is no — the shipped scorer measures mean ECE 0.186 (0.212 with Companies
+  House signals) and systematically over-predicts lateness, which is why its
+  output is presented as a ranking score. These functions are the measurement,
+  not a claim that it passes. See ``docs/model-evaluation.md``.
 
 Kept dependency-light (numpy only) and hand-checked in tests, so the harness is
 trustworthy before it judges any model. scikit-learn arrives with the logistic

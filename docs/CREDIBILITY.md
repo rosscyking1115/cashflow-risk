@@ -60,9 +60,9 @@ real-world performance, and never quote them as a benchmark.
   dashboard.
 - The late-payment rate the generator produces, which is a chosen parameter.
 - **Every risk score shown in the product.** They are 0–1 ranking scores, not
-  probabilities: mean ECE 0.212, systematically over-predicting lateness by about
-  20 percentage points. A displayed "60%" means "chase this one before the 40%
-  one", not "six-in-ten". The dashboard, export and action brief all say "risk
+  probabilities: mean ECE 0.186, or 0.212 with Companies House signals,
+  systematically over-predicting lateness by 17–20 percentage points. A displayed
+  "60%" means "chase this one before the 40% one", not "six-in-ten". The dashboard, export and action brief all say "risk
   score" for exactly this reason.
 
 ---
@@ -72,8 +72,8 @@ real-world performance, and never quote them as a benchmark.
 Stating this plainly because the domain invites the opposite reading:
 
 - **No predictive-skill claim on real ledgers.** No model here has been evaluated
-  against real invoice data. On the synthetic data no fitted model beats the rules
-  baseline once the folds are purged.
+  against real invoice data. On the synthetic data neither fitted rung beats its
+  rules counterpart once the folds are purged.
 - **No claim that the scores are calibrated probabilities.** They are not; the
   measurement is in [model-evaluation.md](model-evaluation.md). Calibrating them is
   unfinished work.

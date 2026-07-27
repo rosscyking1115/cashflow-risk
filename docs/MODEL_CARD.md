@@ -1,15 +1,15 @@
 # Model card — late-payment risk scorer
 
 One-page statement of what the model is, what it was measured at, and what it may
-not be used for. Every figure here was measured on synthetic data with the
-reproduction commands at the bottom.
+not be used for. Every figure here is printed by the reproduction commands at
+the bottom, on synthetic data.
 
 ## Headline
 
-**No fitted model beats the rules baseline.** Logistic regression and gradient
-boosting were both trained and backtested; once the evaluation was corrected for
-look-ahead, neither earned its place, and gradient boosting scored below the base
-rate. The model that ships is the transparent rules scorer.
+**Neither fitted rung beats its rules counterpart.** Logistic regression and
+gradient boosting were both trained and backtested; once the evaluation was
+corrected for look-ahead, neither earned its place, and gradient boosting scored
+below the base rate. The model that ships is the transparent rules scorer.
 
 That is a negative result, and it is the reason this card exists. The evaluation
 was capable of detecting that its own models had no edge, and it did.
@@ -70,9 +70,12 @@ Two separate numbers, easily confused, so both stated plainly:
 - **Gradient boosting's own lift** went from +0.036 to **−0.004** — below
   prevalence, meaning it ranks worse than the base rate.
 - **The pre-declared gate margin** — best fitted rung (logistic + Companies House)
-  minus rules + Companies House, required to be ≥ +0.10 — went from **+0.020 to
-  −0.012**. Negative: the best fitted rung is worse than the baseline it had to
-  beat.
+  minus rules + Companies House, required to be ≥ +0.10 — is now **−0.012**.
+  Negative: the best fitted rung is worse than the baseline it had to beat.
+  Like-for-like on matched windows it moved **+0.003 → −0.012**. The **+0.020**
+  this project used to publish came from the older all-four-unpurged-folds
+  protocol; it is a real number but not the matched-window "before", and pairing
+  it with −0.012 would repeat the very mistake matched windows exist to prevent.
 
 The **rules rows are the control.** That scorer never reads its training set, so
 purging cannot move it, and it moves exactly **+0.000**. That zero is what makes
@@ -89,13 +92,17 @@ synthetic world, by construction.
 
 ## Calibration: the scores are not probabilities
 
-| seed | 1 | 3 | 7 | 11 | 42 |
-|---|---|---|---|---|---|
-| ECE | 0.144 | 0.245 | 0.295 | 0.059 | 0.318 |
+The runtime uses Companies House signals when `COMPANIES_HOUSE_API_KEY` is set and
+plain rules when it is not, so both are reported:
 
-**Mean ECE 0.212, mean Brier 0.264.** The bias is systematic, not noise: mean
-predicted risk **0.49** against a prevalence of **0.29**, over-predicting lateness
-by roughly 20 percentage points on every seed.
+| scorer | mean ECE | mean Brier | mean predicted | prevalence |
+|---|---|---|---|---|
+| rules | **0.186** | 0.247 | 0.456 | 0.290 |
+| rules + Companies House | **0.212** | 0.264 | 0.493 | 0.290 |
+
+The bias is systematic, not noise: mean predicted risk 0.46 (0.49 with Companies
+House) against a prevalence of 0.29, over-predicting lateness by 17–20 percentage
+points on every seed.
 
 A displayed "60%" means *chase this one before the 40% one*. It does not mean a
 six-in-ten chance. Calibrating the scorer (isotonic or Platt, fitted on a purged

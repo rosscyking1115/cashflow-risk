@@ -9,15 +9,17 @@
 
 ## Summary
 
-At the issue-time prediction origin, **no fitted model beats the rules baseline**.
-Logistic regression and gradient boosting both land on or below it once the folds
+At the issue-time prediction origin, **neither fitted rung beats its rules
+counterpart**. Logistic regression and gradient boosting both land on or below it
+once the folds
 are purged of training rows whose labels had not yet resolved. A diagnostic health
 oracle, which reads the generator's own latent truth, clears prevalence by only
 0.100 mean PR-AUC lift, so the ceiling is low before any model starts. What is
 left is a macro factor you cannot observe at issue time without leaking the label.
 
 An earlier version of this page reported a visible edge for the fitted models
-(logistic +0.044 against rules +0.008). That gap was look-ahead, not skill. See
+(logistic +0.044 against rules +0.008, on the original all-four-unpurged-folds
+protocol). That gap was look-ahead, not skill. See
 [Purging the label horizon](#purging-the-label-horizon).
 
 ## The prediction problem
@@ -67,10 +69,13 @@ training row issued a week before the test window therefore carried an outcome
 from *inside* that window: information nobody would have had on the day the model
 would really have been fitted.
 
-Measured on this data, **74.5% of all training rows across every fold and seed**
-had a label that closed at or after the test window opened. The earliest fold was
-100% overlapping — it has no legitimately trainable history at all, and purging
-drops it, leaving 3 usable folds of 4 on every seed.
+Measured on this data, **69.7% of training rows across the surviving windows**
+(3,552 → 1,076) had a label that closed at or after the test window opened. The
+earliest fold was separately 100% overlapping — it has no legitimately trainable
+history at all, so purging drops it entirely, leaving 3 usable folds of 4 on every
+seed. Counting that dropped fold's rows as "purged" as well gives 74.5%, which is
+a different measurement; the like-for-like figure is 69.7% and it is what
+`scripts/bakeoff_risk.py` prints.
 
 `rolling_origin_folds(..., purge_days=120)` now removes those rows. Both arms below
 run on the **same test windows**, so the difference is the overlap and nothing
@@ -94,9 +99,22 @@ variants. That is what makes the other rows readable. Every fitted model lost
 ground, gradient boosting most of all, and it fell below prevalence once the
 overlap was removed.
 
-Pre-declared margin (best fitted rung beats rules by ≥0.10 pooled lift):
-**not met** — margin **−0.012**, i.e. the best fitted rung is now *worse* than the
-rules baseline it was meant to beat.
+Pre-declared margin — the best fitted rung (logistic + Companies House) must beat
+**rules + Companies House**, its like-for-like counterpart, by ≥0.10 pooled lift:
+**not met**, margin **−0.012**. Negative, so the best fitted rung is worse than
+the baseline it was meant to beat, not merely short of the bar.
+
+Two things worth stating precisely, because they are easy to garble:
+
+- The comparison is **within a feature variant**. Logistic+CH (+0.025) is measured
+  against rules+CH (+0.036), not against plain rules (+0.022). Neither fitted rung
+  beats its own rules counterpart.
+- **The margin's "before" is not from this table.** The +0.020 the project used to
+  publish came from the *original* protocol — all four unpurged folds. On matched
+  windows the unpurged margin is **+0.003**, so the like-for-like move is
+  +0.003 → −0.012. Both numbers are real; they measure different things, and
+  quoting "+0.020 → −0.012" as if it came from one protocol would repeat exactly
+  the mistake the matched-window design exists to prevent.
 
 Two caveats on these numbers. Purging costs training data — the surviving folds
 train on tens of rows rather than hundreds — so part of the drop is small-sample,
@@ -140,19 +158,21 @@ rules baseline. Both are retained as re-judgeable rungs for real data.
 ## Calibration: the scores are not calibrated, and the product says so
 
 Separate from ranking, a probability-shaped output invites being read as odds. The
-shipped rules scorer's are not:
+shipped scorer's are not. The runtime uses Companies House signals when
+`COMPANIES_HOUSE_API_KEY` is set and plain rules when it is not, so both are
+reported:
 
-| seed | ECE | Brier | prevalence | mean predicted |
+| scorer | mean ECE | mean Brier | mean predicted | prevalence |
 |---|---|---|---|---|
-| 1 | 0.144 | 0.237 | 0.309 | 0.444 |
-| 3 | 0.245 | 0.284 | 0.278 | 0.524 |
-| 7 | 0.295 | 0.304 | 0.317 | 0.592 |
-| 11 | 0.059 | 0.229 | 0.348 | 0.405 |
-| 42 | 0.318 | 0.267 | 0.200 | 0.503 |
+| rules | **0.186** | 0.247 | 0.456 | 0.290 |
+| rules + Companies House | **0.212** | 0.264 | 0.493 | 0.290 |
 
-**Mean ECE 0.212, mean Brier 0.264.** The bias is systematic, not noise: mean
-predicted risk is 0.49 against a prevalence of 0.29, so the scorer over-predicts
-lateness by roughly 20 percentage points on every seed.
+Per-seed ECE — rules: 0.144, 0.207, 0.223, 0.056, 0.301. With Companies House:
+0.144, 0.245, 0.295, 0.059, 0.318.
+
+The bias is systematic, not noise: mean predicted risk is 0.46 (0.49 with
+Companies House) against a prevalence of 0.29, so the scorer over-predicts
+lateness by roughly 17 to 20 percentage points on every seed.
 
 So the 0–1 output is a **ranking score, not a probability**. It is good enough to
 order a chase list, which is the only thing the product does with it. It is not

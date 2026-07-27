@@ -203,8 +203,8 @@ export default function Page() {
           </p>
           <p className="mt-1.5 text-xs text-muted">
             Risk scores rank which invoices to chase first. They are not calibrated
-            probabilities, and on this data no fitted model beat the simple rules
-            baseline once look-ahead was removed from the evaluation.
+            probabilities, and on this data no fitted model beat its rules
+            counterpart once look-ahead was removed from the evaluation.
           </p>
         </div>
       )}

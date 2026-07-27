@@ -161,6 +161,8 @@ def main() -> None:
     lifts: dict[str, list[float]] = {}
     leaky_lifts: dict[str, list[float]] = {}
     fold_counts: list[tuple[int, int]] = []
+    calib: dict[str, list[tuple[float, float, float, float]]] = {}
+    leaky_rows = purged_rows = 0
     for seed in SEEDS:
         cfg = GeneratorConfig(seed=seed, n_customers=30, weeks=52)
         ds = generate_dataset(cfg)
@@ -203,9 +205,22 @@ def main() -> None:
                         len(purged),
                     )
                 )
+            if not suffix:
+                leaky_rows += sum(len(f.train) for f in unpurged)
+                purged_rows += sum(len(f.train) for f in purged)
             for name, scorer in scorers:
                 key = name + suffix
                 result = run_backtest(purged, scorer)
+                if name == "rules":
+                    scored = [s for f in purged for s in scorer(f.train, f.test)]
+                    calib.setdefault(key, []).append(
+                        (
+                            result.pooled.calibration_error,
+                            result.pooled.brier,
+                            sum(scored) / len(scored),
+                            result.pooled.prevalence,
+                        )
+                    )
                 lifts.setdefault(key, []).append(
                     result.pooled.average_precision - result.pooled.prevalence
                 )
@@ -240,6 +255,25 @@ def main() -> None:
               f"   delta {leaky_means[k] - means[k]:+.3f}")
     kept = ", ".join(f"{p}/{a}" for a, p in fold_counts)
     print(f"\nFolds kept after purging (per seed): {kept}")
+    pct = 100.0 * (1.0 - purged_rows / leaky_rows) if leaky_rows else 0.0
+    print(
+        f"Training rows dropped by the purge: {leaky_rows} -> {purged_rows} "
+        f"({pct:.1f}% carried a label resolving inside the test window)"
+    )
+
+    print("\nCalibration of the shipped scorer (purged folds). The runtime uses CH")
+    print("signals when COMPANIES_HOUSE_API_KEY is set and plain rules when it is not,")
+    print("so both are reported:")
+    print(f"  {'scorer':>12}  {'ECE':>7}  {'Brier':>7}  {'mean pred':>10}  {'prevalence':>10}")
+    for k in ("rules", "rules+CH"):
+        c = calib.get(k)
+        if c:
+            n = len(c)
+            print(
+                f"  {k:>12}  {sum(x[0] for x in c) / n:>7.3f}  "
+                f"{sum(x[1] for x in c) / n:>7.3f}  {sum(x[2] for x in c) / n:>10.3f}  "
+                f"{sum(x[3] for x in c) / n:>10.3f}"
+            )
 
     fitted = [k for k in means if k.endswith("+CH") and k != "rules+CH" and k != "ceiling"]
     best = max(fitted, key=lambda k: means[k])

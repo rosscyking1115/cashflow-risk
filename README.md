@@ -90,7 +90,7 @@ Scope worth knowing: the check covers the published package. `tests/` and
 
 ## Model evaluation
 
-On the synthetic data **no fitted model beats the rules baseline**, and the
+On the synthetic data **neither fitted rung beats its rules counterpart**, and the
 evaluation says why. A health oracle, read straight from the generator's latent
 truth, clears prevalence by only 0.100 mean PR-AUC lift, so the ceiling is low to
 begin with. Most of what is left is a macro factor you cannot see at issue time
@@ -99,21 +99,25 @@ without leaking the answer.
 Models are scored on a rolling-origin, group-aware backtest that is **purged by
 the label horizon** — a training invoice is dropped unless its outcome had already
 resolved when the test window opened. That purge is not decoration. The folds were
-originally split on issue date alone, so 74.5% of training rows carried an outcome
+originally split on issue date alone, so 69.7% of training rows carried an outcome
 from inside the test period, and every fitted model's edge turned out to be that
 overlap:
 
 - **Gradient boosting** fell from +0.036 to **−0.004** — below prevalence, so it
   ranks worse than the base rate.
-- **The pre-declared gate margin** — best fitted rung minus the rules baseline,
-  required to be ≥ +0.10 — fell from +0.020 to **−0.012**. Negative: the best
-  fitted rung is worse than the baseline it had to beat.
+- **The pre-declared gate margin** — the best fitted rung minus *its own* rules
+  counterpart (logistic+CH against rules+CH), required to be ≥ +0.10 — is now
+  **−0.012**. Negative: the best fitted rung is worse than the baseline it had to
+  beat. Like-for-like on matched windows it moved +0.003 → −0.012; the +0.020 this
+  project used to publish came from the older all-four-unpurged-folds protocol, so
+  the two are not a before-and-after pair.
 - **The rules scorer moved +0.000.** It never reads its training set, so purging
   cannot move it. That zero is what makes the other differences attributable to
   the leak rather than to folds being reshuffled.
 
-The scores are also **not calibrated** — mean ECE 0.212, over-predicting lateness
-by about 20 percentage points — so they rank the chase list and nothing more.
+The scores are also **not calibrated** — mean ECE 0.186, or 0.212 once Companies
+House signals are in, over-predicting lateness by 17–20 percentage points — so
+they rank the chase list and nothing more.
 [docs/MODEL_CARD.md](docs/MODEL_CARD.md) is the one-page version;
 [docs/model-evaluation.md](docs/model-evaluation.md) has the workings and both
 arms side by side.

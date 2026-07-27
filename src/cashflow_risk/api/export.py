@@ -68,7 +68,8 @@ def analysis_to_xlsx(response: AnalysisResponse) -> bytes:
 
     risk = wb.create_sheet("Cash at risk")
     # "Risk score", not "Probability" — the 0-1 output ranks invoices, it is not
-    # calibrated (measured mean ECE 0.212). See cashflow_risk.risk.
+    # calibrated (mean ECE 0.186, or 0.212 with Companies House signals).
+    # See cashflow_risk.risk.
     _header(risk, ["Invoice", "Customer", "Risk score", "Band", "Cash at risk", "Why"])
     for s in response.top_risks:
         risk.append(
