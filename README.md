@@ -98,14 +98,25 @@ without leaking the answer.
 
 Models are scored on a rolling-origin, group-aware backtest that is **purged by
 the label horizon** — a training invoice is dropped unless its outcome had already
-resolved when the test window opened. That purge is not decoration. Without it,
-74.5% of training rows carried an outcome from inside the test period, and the
-fitted models showed an edge that vanished when it was removed: logistic fell from
-+0.048 to +0.021 and gradient boosting from +0.036 to below prevalence, while the
-rules control moved +0.000. The scores are also **not calibrated** — mean ECE
-0.212, over-predicting lateness by about 20 percentage points — so they rank the
-chase list and nothing more. [docs/model-evaluation.md](docs/model-evaluation.md)
-has the workings and both arms side by side.
+resolved when the test window opened. That purge is not decoration. The folds were
+originally split on issue date alone, so 74.5% of training rows carried an outcome
+from inside the test period, and every fitted model's edge turned out to be that
+overlap:
+
+- **Gradient boosting** fell from +0.036 to **−0.004** — below prevalence, so it
+  ranks worse than the base rate.
+- **The pre-declared gate margin** — best fitted rung minus the rules baseline,
+  required to be ≥ +0.10 — fell from +0.020 to **−0.012**. Negative: the best
+  fitted rung is worse than the baseline it had to beat.
+- **The rules scorer moved +0.000.** It never reads its training set, so purging
+  cannot move it. That zero is what makes the other differences attributable to
+  the leak rather than to folds being reshuffled.
+
+The scores are also **not calibrated** — mean ECE 0.212, over-predicting lateness
+by about 20 percentage points — so they rank the chase list and nothing more.
+[docs/MODEL_CARD.md](docs/MODEL_CARD.md) is the one-page version;
+[docs/model-evaluation.md](docs/model-evaluation.md) has the workings and both
+arms side by side.
 
 That is the honest result and it is the reason to look at this repo rather than a
 reason not to: the evaluation was capable of detecting that its own models had no
@@ -245,6 +256,7 @@ sourced.
 
 ## Documentation
 
+- [docs/MODEL_CARD.md](docs/MODEL_CARD.md) — what the model is, what it scored, and what it may not be used for
 - [docs/CREDIBILITY.md](docs/CREDIBILITY.md) — what each number may and may not be read as
 - [docs/model-evaluation.md](docs/model-evaluation.md) — how the risk model is measured, and what it scored
 - [docs/architecture.md](docs/architecture.md) — architecture and its trade-offs
