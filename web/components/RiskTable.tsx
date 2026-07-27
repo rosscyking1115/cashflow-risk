@@ -37,7 +37,12 @@ export function RiskTable({ risks }: { risks: Risk[] }) {
             <div className="font-mono text-sm font-semibold text-ink">
               {formatGBP(r.cash_at_risk)}
             </div>
-            <div className="text-xs text-muted">{formatPercent(r.probability)} late</div>
+            <div
+              className="text-xs text-muted"
+              title="A relative ranking score, not a calibrated probability. Use it to order which invoices to chase, not to read the odds."
+            >
+              risk {formatPercent(r.probability)}
+            </div>
           </div>
         </li>
       ))}
