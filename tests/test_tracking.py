@@ -1,6 +1,6 @@
 """MLflow tracking of backtest results — against a local file store, no server.
 
-Training-time only (PLAN §0.1): mlflow-skinny lives in the `train` dependency
+Training-time only: mlflow-skinny lives in the `train` dependency
 group, is imported only by scripts and these tests, and never ships in the SaaS
 runtime image.
 """

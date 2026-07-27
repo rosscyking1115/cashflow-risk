@@ -154,7 +154,7 @@ def test_overdue_invoice_lands_in_first_week() -> None:
 
 def test_headline_story_top_customer_late_payment_breaks_week_6() -> None:
     """If a top customer's two invoices are paid 21 days late, the payroll
-    reserve is breached in week 6 — the canonical user story (PLAN §1, §7)."""
+    reserve is breached in week 6 — the canonical user story."""
     payroll = _bill("6000", due=date(2026, 2, 12))  # +42 days -> week 6
     invoices = [
         _invoice("4000", AS_OF, due=date(2026, 1, 29), id="INV-A", customer_id="top"),

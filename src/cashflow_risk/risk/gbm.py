@@ -1,4 +1,4 @@
-"""The gradient-boosted rung of the risk ladder (PLAN §10: rules → logistic →
+"""The gradient-boosted rung of the risk ladder (rules → logistic →
 LightGBM *only if it earns its keep*).
 
 Training-time only: ``lightgbm`` lives in the ``train`` dependency group and is

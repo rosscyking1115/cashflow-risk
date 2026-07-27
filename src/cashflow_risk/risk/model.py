@@ -1,4 +1,4 @@
-"""A fitted logistic-regression late-payment model (PLAN §10: rules → logistic).
+"""A fitted logistic-regression late-payment model (rules → logistic).
 
 The second rung above the rules baseline: the same leakage-safe, as-of-issue
 features, but with weights *learned* rather than hand-set, standardised and

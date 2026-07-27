@@ -1,6 +1,6 @@
 """Behaviour of the rules-based late-payment risk baseline.
 
-A transparent baseline (PLAN §10: rules before ML). Every score is a bounded
+A transparent baseline — rules before ML. Every score is a bounded
 probability with a plain-English "why", and ranking is by *expected cash at
 risk* — outstanding amount weighted by late probability — not probability alone.
 """

@@ -1,4 +1,4 @@
-"""Audit log (PLAN Phase 4): who did what, when — per tenant, minimal detail.
+"""Audit log: who did what, when — per tenant, minimal detail.
 
 Events are recorded at the API seams (upload, exports, invites, renames), are
 tenant-scoped like everything else, carry counts/ids but never financial values,

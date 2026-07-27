@@ -1,4 +1,4 @@
-"""Evaluation metrics for the late-payment risk model (PLAN §7).
+"""Evaluation metrics for the late-payment risk model.
 
 The right yardsticks for a rare, ranked-action problem — not accuracy:
 
@@ -94,7 +94,7 @@ def expected_calibration_error(
 
 @dataclass(frozen=True)
 class RiskEvaluation:
-    """A bundle of the metrics that decide Gate 3 (PLAN §8.3)."""
+    """A bundle of the metrics a scorer is judged on."""
 
     n: int
     prevalence: float
