@@ -48,6 +48,20 @@ check whether an estimator recovered the truth, because the truth is not observe
 | The health-oracle ceiling bounds what any health proxy could extract | Reading latent health directly scores +0.100 mean lift, so no observable proxy can beat that on these folds. |
 | The purge changes the answer, and by how much | Both arms run on identical test windows; the rules control moves +0.000, which is what makes the other deltas readable. |
 
+**Known weakness in the purge guard, recorded rather than fixed.** The test that
+fails if a fold trains on an unresolved label is pinned to one configuration —
+`seed=7, n_customers=30, weeks=52`. It catches the purge being removed, which is
+what it was written for, and a mutation check confirms that. It would *not* catch a
+change to the generator config that made purging vacuous on the pinned seed while
+leaving it necessary elsewhere. Parameterising it across seeds and horizons is
+outstanding work.
+
+**Two figures that must never be paired.** The label overlap is **69.7%** and the
+gate margin moved **+0.003 → −0.012**, both on matched windows. An earlier revision
+published **74.5%** and **+0.020**; those come from the older all-four-unpurged-folds
+protocol. Both are real numbers, and quoting either beside a matched-window figure
+reintroduces the exact confound the matched-window design exists to remove.
+
 ### Pile 3 — illustrative magnitude (synthetic; not real-world performance)
 
 These show the machinery working end to end. Their **magnitudes are properties of

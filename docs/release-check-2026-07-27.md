@@ -155,10 +155,18 @@ other deltas attributable to the overlap rather than to fold reshuffling — and
 is why my first attempt at this measurement was wrong and had to be redone, since
 it compared different numbers of folds between the two arms.
 
-**Every fitted model's apparent edge over the rules baseline was label overlap.**
-Gradient boosting drops below prevalence. The pre-declared margin moves from
-`+0.020` to **`−0.012`** — the best fitted rung is now *worse* than the baseline it
-was supposed to beat, rather than merely failing to clear the bar by enough.
+**Every fitted rung's apparent edge over its rules counterpart was label overlap.**
+Gradient boosting's own lift drops from `+0.036` to **`−0.004`**, below prevalence.
+The pre-declared gate margin — logistic+CH against rules+CH — moves from `+0.003`
+to **`−0.012`** on these matched windows: the best fitted rung is now *worse* than
+the baseline it was supposed to beat, rather than merely failing to clear the bar.
+
+> This paragraph originally read *"the margin moves from +0.020 to −0.012"*. The
+> `+0.020` is from the older all-four-unpurged-folds protocol, not from the
+> matched-window table above it, and pairing the two is exactly the error matched
+> windows exist to prevent. Corrected in round 3; kept visible here because the
+> merged version propagated into a PR description and a briefing before it was
+> caught, and a ledger that quietly swaps a number teaches nothing.
 
 **Fixed** —
 [`rolling_origin_folds(..., purge_days=N)`](../src/cashflow_risk/risk/backtest.py)
