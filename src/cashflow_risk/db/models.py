@@ -92,7 +92,7 @@ class CompanySignalRow(Base):
 
 
 class AuditEventRow(Base):
-    """One recorded action on a Business (PLAN Phase 4: audit log).
+    """One recorded action on a Business — the append-only audit log.
 
     Append-only; tenant-scoped like everything else. ``detail`` holds ids and
     counts only — never amounts, customer names, or emails (the trail must be

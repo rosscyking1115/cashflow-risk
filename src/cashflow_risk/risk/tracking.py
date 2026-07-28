@@ -1,4 +1,4 @@
-"""MLflow tracking for risk-model backtests (PLAN §0.1: tracking-only).
+"""MLflow tracking for risk-model backtests — tracking only, never serving.
 
 Training-time code: ``mlflow-skinny`` lives in the ``train`` dependency group,
 so this module is importable in dev and on a training box but **never in the

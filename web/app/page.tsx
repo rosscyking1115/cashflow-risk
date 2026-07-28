@@ -42,7 +42,12 @@ export default function Page() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeBusiness, setActiveBusiness] = useState<string | null>(null);
 
-  const load = useCallback(async (request: Promise<Analysis>) => {
+  // Demo runs on generated data. The banner that says so is driven by this, so
+  // it must be set by every path that replaces the analysis.
+  const [isDemo, setIsDemo] = useState(true);
+
+  const load = useCallback(async (request: Promise<Analysis>, demo: boolean) => {
+    setIsDemo(demo);
     setLoading(true);
     setError(null);
     setSlow(false);
@@ -81,14 +86,14 @@ export default function Page() {
 
   useEffect(() => {
     void (async () => {
-      await load(fetchDemo());
+      await load(fetchDemo(), true);
       await refreshBusinesses();
       await refreshHistory();
     })();
   }, [load, refreshBusinesses, refreshHistory]);
 
   const handleUpload = async (file: File, opening: number, reserve: number) => {
-    await load(uploadInvoices(file, opening, reserve));
+    await load(uploadInvoices(file, opening, reserve), false);
     await refreshHistory();
   };
 
@@ -98,7 +103,7 @@ export default function Page() {
     setNotice(null);
     const list = await fetchRuns().catch(() => [] as RunSummary[]);
     setRuns(list);
-    if (list.length > 0) await load(fetchRun(list[0].id));
+    if (list.length > 0) await load(fetchRun(list[0].id), false);
   };
 
   const handleInvite = async (email: string) => {
@@ -145,7 +150,7 @@ export default function Page() {
       setRuns([]);
       setNotice("All your stored data has been deleted.");
       await refreshBusinesses();
-      await load(fetchDemo());
+      await load(fetchDemo(), true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed.");
     }
@@ -169,7 +174,7 @@ export default function Page() {
           <ModeBar
             busy={loading}
             canUpload={canUpload}
-            onDemo={() => load(fetchDemo())}
+            onDemo={() => void load(fetchDemo(), true)}
             onUpload={handleUpload}
           />
           {clerkEnabled && <AuthArea />}
@@ -185,6 +190,22 @@ export default function Page() {
             onInvite={handleInvite}
             onRename={handleRename}
           />
+        </div>
+      )}
+
+      {isDemo && (
+        <div className="mt-4 rounded-xl border border-hairline bg-surface p-4">
+          <p className="text-sm text-ink">
+            <span className="font-semibold">Synthetic demo data.</span> Every figure
+            below — the runway, the shortfall, the amounts and the risk scores — is
+            produced by a seeded generator. No real business, customer or payment is
+            represented here.
+          </p>
+          <p className="mt-1.5 text-xs text-muted">
+            Risk scores rank which invoices to chase first. They are not calibrated
+            probabilities, and on this data no fitted model beat its rules
+            counterpart once look-ahead was removed from the evaluation.
+          </p>
         </div>
       )}
 
@@ -207,7 +228,7 @@ export default function Page() {
         <div className="mt-6 rounded-xl border border-high/30 bg-high-soft p-5">
           <p className="text-sm font-medium text-high">{error}</p>
           <button
-            onClick={() => load(fetchDemo())}
+            onClick={() => void load(fetchDemo(), true)}
             className="mt-2 text-sm font-medium text-accent underline-offset-2 hover:underline"
           >
             Try the demo again
@@ -225,7 +246,7 @@ export default function Page() {
             <HistoryPanel
               runs={runs}
               activeId={data.run_id ?? null}
-              onSelect={(id) => load(fetchRun(id))}
+              onSelect={(id) => void load(fetchRun(id), false)}
             />
           )}
 

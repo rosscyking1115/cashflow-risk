@@ -19,3 +19,11 @@ there is **no browser-side data store** at MVP.
 
 "Local-first" privacy claims are downgraded to "local-control". A true in-browser
 (WASM) engine remains a possible future, but is a different, larger project.
+
+## Status (27 Jul 2026)
+
+The sole-source-of-truth half of this decision is implemented and holds. The
+DuckDB half never was: no code imports DuckDB, the forecast and feature paths are
+plain pandas and Python, and the unused dependency has now been removed. The
+decision to keep any analytics engine ephemeral rather than promote it to a store
+still stands and would apply if one is introduced later.

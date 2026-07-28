@@ -17,7 +17,6 @@ dependencies = [
     "pandas>=2.2",
     "pydantic>=2.7",
     "python-dateutil>=2.9",
-    "duckdb>=1.1",
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "python-multipart>=0.0.9",
@@ -44,8 +43,8 @@ dev = [
     "types-python-dateutil>=2.9",
     { include-group = "train" },
 ]
-# Training-time lane (PLAN §0.1: MLflow is tracking-only and lives OUTSIDE the
-# SaaS runtime — the Docker image installs with --no-dev and never gets this).
+# Training-time lane: MLflow is tracking-only and lives OUTSIDE the runtime —
+# the Docker image installs with --no-dev and never gets this.
 train = [
     "lightgbm>=4",
     "mlflow-skinny>=3",

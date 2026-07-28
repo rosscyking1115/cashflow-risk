@@ -71,9 +71,10 @@ How long an unpaid Invoice has been outstanding relative to its Due date.
 _Avoid_: aged debt.
 
 **Cash at risk**:
-The expected dueamount exposed to lateness — an Invoice's outstanding amount
-weighted by its late-payment probability. The metric that ranks Invoices and
-Customers.
+The amount exposed to lateness — an Invoice's outstanding amount weighted by its
+late-payment **risk score**. The metric that ranks Invoices and Customers. Because
+the score is a ranking score rather than a calibrated probability, cash at risk
+orders exposure; it is not an expected-value estimate in pounds.
 _Avoid_: exposure, expected loss.
 
 **Cash runway**:

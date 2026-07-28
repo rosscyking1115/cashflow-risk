@@ -1,10 +1,17 @@
-"""Rolling-origin (walk-forward), group-aware backtest for the risk model (PLAN §7).
+"""Rolling-origin (walk-forward), group-aware backtest for the risk model.
 
-The evaluation protocol that gives Gate 3 teeth:
+The evaluation protocol:
 
-- **Rolling-origin:** expanding-window temporal folds. Every test example is dated
-  on or after the whole training fold — the model is only ever judged on the
-  future, never on data it could have peeked at.
+- **Rolling-origin:** expanding-window temporal folds, ordered by each example's
+  prediction origin. Every test example is dated on or after the whole training
+  fold, so no fold is scored on a period its training window has already seen.
+- **Purge (label-horizon embargo):** a training example's *label* is not resolved
+  at its origin — it closes ``horizon_days`` later. Without a purge, a training
+  row issued shortly before the test window carries an outcome from inside that
+  window, which is information the model could not have had on the day it would
+  really have been fitted. ``purge_days`` drops those rows. It is opt-in because
+  it is only correct when the caller knows the label horizon, but on this data it
+  changes the answer — see ``docs/model-evaluation.md``.
 - **Cold-start slice:** the subset of each test fold whose customer never appears
   in training. This is the group-aware view — how the model generalises to *new*
   customers, where there is no history to lean on.
@@ -18,6 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import timedelta
 
 from cashflow_risk.risk.dataset import TrainingExample
 from cashflow_risk.risk.evaluation import RiskEvaluation, evaluate
@@ -50,16 +58,38 @@ class BacktestResult:
 
 
 def rolling_origin_folds(
-    examples: Sequence[TrainingExample], *, n_folds: int = 4, min_train_frac: float = 0.4
+    examples: Sequence[TrainingExample],
+    *,
+    purge_days: int,
+    n_folds: int = 4,
+    min_train_frac: float = 0.4,
 ) -> list[Fold]:
     """Expanding-window temporal folds, ordered by the example's issue date.
 
     The first ``min_train_frac`` of the timeline seeds the initial training set;
     the remainder is split into ``n_folds`` contiguous test windows, each training
     on everything strictly before it.
+
+    ``purge_days`` is **required, with no default**, and should be set to the label
+    horizon. Training examples whose label only resolves at or after the test
+    window opens are then dropped, so the training set contains nothing whose
+    outcome was still unknown on the day the model would really have been fitted.
+    Folds left with no training examples are dropped entirely — with a long horizon
+    and a short ledger, the earliest folds have no legitimately trainable history,
+    and returning fewer folds is the honest result rather than a silently leaky one.
+
+    It is required rather than defaulted because both available defaults are wrong.
+    ``0`` silently reintroduces the leak this argument exists to prevent, which is
+    the bug this function shipped with. A hard-coded ``120`` would be right only for
+    the horizon this project happens to use and would silently under-purge anything
+    longer. The horizon is a property of the caller's dataset, so the caller states
+    it. Passing ``purge_days=0`` is legal and means "I want the leaky arm", which
+    the bake-off does exactly once, to measure what the leak is worth.
     """
     if n_folds < 1:
         raise ValueError("n_folds must be >= 1")
+    if purge_days < 0:
+        raise ValueError("purge_days must be >= 0")
     ordered = sorted(examples, key=lambda e: e.features.as_of)
     n = len(ordered)
     start = int(n * min_train_frac)
@@ -71,7 +101,14 @@ def rolling_origin_folds(
         lo, hi = edges[i], edges[i + 1]
         if hi <= lo:
             continue
-        folds.append(Fold(train=ordered[:lo], test=ordered[lo:hi]))
+        train, test = ordered[:lo], ordered[lo:hi]
+        if purge_days:
+            opens = min(e.features.as_of for e in test)
+            cutoff = opens - timedelta(days=purge_days)
+            train = [e for e in train if e.features.as_of <= cutoff]
+            if not train:
+                continue
+        folds.append(Fold(train=train, test=test))
     return folds
 
 
