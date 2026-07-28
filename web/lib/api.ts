@@ -72,17 +72,50 @@ function authHeaders(token: string): Record<string, string> {
   return headers;
 }
 
-// Free-tier servers sleep after idle and can take ~a minute to wake. Time out
-// rather than hang forever, with a message that explains what's happening.
-async function timedFetch(url: string, init?: RequestInit, ms = 90_000): Promise<Response> {
+/** The API never answered, so it is not merely asleep.
+ *
+ * Two ways that happens, and they are worth telling apart rather than averaging
+ * into one message: it accepted the connection and then said nothing until the
+ * cold-start allowance ran out, or it refused the connection outright. Saying
+ * "did not respond within 90 seconds" about a request that failed in 100ms would
+ * be a measurement reporting the same value for two different states.
+ */
+export class ServiceUnavailableError extends Error {
+  constructor(kind: "timeout" | "unreachable", seconds: number) {
+    super(
+      (kind === "timeout"
+        ? `The demo service did not respond within ${seconds} seconds, which is ` +
+          `longer than a cold start takes, so it is not just waking up.`
+        : `The demo service could not be reached at all.`) +
+        ` It runs on a free tier and is probably temporarily unavailable. The rest` +
+        ` of the project is unaffected — the code and its evaluation are in the` +
+        ` repository.`,
+    );
+    this.name = "ServiceUnavailableError";
+  }
+}
+
+// Free-tier servers sleep after idle and take tens of seconds to wake. Waking and
+// dead are different states and the UI reports them differently, so the timeout
+// sits past the cold-start window: anything slower than this is a real failure,
+// not a wake-up. Under it, the caller shows the waking state instead of an error.
+const COLD_START_ALLOWANCE_MS = 90_000;
+
+async function timedFetch(
+  url: string,
+  init?: RequestInit,
+  ms = COLD_START_ALLOWANCE_MS,
+): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") {
-      throw new Error("The server took too long to respond — it may be waking up. Please try again.");
+      throw new ServiceUnavailableError("timeout", Math.round(ms / 1000));
     }
+    // A network-level failure is also not a wake-up: the request never got a reply.
+    if (e instanceof TypeError) throw new ServiceUnavailableError("unreachable", 0);
     throw e;
   } finally {
     clearTimeout(timer);

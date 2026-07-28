@@ -30,8 +30,16 @@ score, not a calibrated probability, and the repo measures how far off it is.
 > what the numbers may and may not be read as.
 
 **[▶ Live demo](https://cashflow-web-sidu.onrender.com/)** — opens on a synthetic
-dataset, no sign-in. (Free-tier host, so the first load can take about 30 seconds
-to wake.)
+dataset, no sign-in.
+
+> [!NOTE]
+> The demo is hosted on a free tier, which sleeps when idle and is sometimes
+> unavailable altogether. A first load taking around 30 seconds is the host
+> waking up, not a fault. If the dashboard reports that the service could not be
+> reached, it is the hosting rather than the project — everything the demo shows
+> can be reproduced locally with the commands under
+> [Getting started](#getting-started), and the evaluation behind it is in
+> [docs/MODEL_CARD.md](docs/MODEL_CARD.md).
 
 ![The dashboard on synthetic data: a 13-week cash-runway readout and forecast, the invoices ranked by cash at risk with plain-English drivers, and the week's recommended action.](docs/images/dashboard.png)
 
