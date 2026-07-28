@@ -47,13 +47,18 @@ export default function Page() {
   const [isDemo, setIsDemo] = useState(true);
 
   const load = useCallback(async (request: Promise<Analysis>, demo: boolean) => {
-    setIsDemo(demo);
     setLoading(true);
     setError(null);
     setSlow(false);
     const slowTimer = setTimeout(() => setSlow(true), 4000);
     try {
-      setData(await request);
+      const next = await request;
+      // Flip the flag only once the new analysis has actually arrived. Setting it
+      // up front looks equivalent but is not: a failed upload would leave the
+      // previous demo figures on screen with the synthetic-data banner already
+      // removed, which is worse than either state on its own.
+      setData(next);
+      setIsDemo(demo);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
