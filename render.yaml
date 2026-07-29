@@ -5,12 +5,6 @@
 # must be set by hand after the first deploy (their URLs aren't known until the
 # services exist) — see docs/deployment.md.
 
-databases:
-  - name: cashflow-db
-    plan: free
-    databaseName: cashflow
-    user: cashflow
-
 services:
   # FastAPI engine (Docker). Runs `alembic upgrade head` on start.
   - type: web
@@ -23,10 +17,12 @@ services:
     envVars:
       - key: CASHFLOW_ENV
         value: production
+      # Postgres connection string, set in the Render dashboard (never committed).
+      # Supplied by an external managed Postgres — see
+      # docs/adr/0003-hosted-demo-backend-stays-down.md. The service refuses to
+      # start without it rather than falling back to SQLite.
       - key: DATABASE_URL
-        fromDatabase:
-          name: cashflow-db
-          property: connectionString
+        sync: false
       - key: CASHFLOW_JWT_SECRET
         generateValue: true
       # Trust the dashboard's Render domain without hard-coding its exact name.
@@ -59,10 +55,9 @@ services:
     schedule: "0 3 * * *"
     dockerCommand: uv run python scripts/daily_maintenance.py
     envVars:
+      # Same external Postgres as the API; set in the dashboard, never committed.
       - key: DATABASE_URL
-        fromDatabase:
-          name: cashflow-db
-          property: connectionString
+        sync: false
       # Companies House REST API key — enables the signal refresh step.
       - key: COMPANIES_HOUSE_API_KEY
         sync: false

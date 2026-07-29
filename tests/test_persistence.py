@@ -4,11 +4,13 @@ Authenticated analyses are stored and retrievable, and one tenant can never see
 another tenant's runs — even with the exact run id.
 """
 
+import pytest
 from fastapi.testclient import TestClient
 
 from cashflow_risk.api import app
 from cashflow_risk.auth import Principal, mint_token
 from cashflow_risk.auth.settings import jwt_secret
+from cashflow_risk.db.session import DEFAULT_URL, _database_url
 
 client = TestClient(app)
 
@@ -69,3 +71,40 @@ def test_one_tenant_cannot_see_anothers_runs() -> None:
 def test_runs_endpoints_require_auth() -> None:
     assert client.get("/api/runs").status_code == 401
     assert client.get("/api/runs/anything").status_code == 401
+
+
+# --- the production guard against the rejected SQLite fallback -----------------
+
+
+def test_production_refuses_to_start_without_a_database_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Removing the blueprint's database binding made an unset DATABASE_URL a real
+    misconfiguration, not a theoretical one. Production must fail loudly rather
+    than quietly serve from a file the host discards on every redeploy."""
+    monkeypatch.setenv("CASHFLOW_ENV", "production")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(RuntimeError, match="refuses|Refusing"):
+        _database_url()
+
+
+def test_production_refuses_an_explicit_sqlite_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Setting DATABASE_URL to SQLite is the same defect, just spelled out."""
+    monkeypatch.setenv("CASHFLOW_ENV", "production")
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///./cashflow.db")
+    with pytest.raises(RuntimeError, match="Refusing"):
+        _database_url()
+
+
+def test_production_accepts_a_postgres_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The guard must not block the configuration it exists to require."""
+    monkeypatch.setenv("CASHFLOW_ENV", "production")
+    monkeypatch.setenv("DATABASE_URL", "postgres://u:p@example.test/db")
+    assert _database_url() == "postgresql+psycopg://u:p@example.test/db"
+
+
+def test_dev_still_falls_back_to_sqlite(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The guard is production-only; local development keeps working with nothing set."""
+    monkeypatch.delenv("CASHFLOW_ENV", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert _database_url() == DEFAULT_URL

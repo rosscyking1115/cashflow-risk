@@ -3,6 +3,15 @@
 DB-agnostic: ``DATABASE_URL`` defaults to a local SQLite file for dev, and points
 at Postgres in production. Tables are created via :func:`init_db` (Alembic
 migrations are the production follow-up).
+
+**The SQLite default is a development convenience and must never reach
+production.** Falling back to it there would silently turn Postgres-as-sole-
+source-of-truth into an ephemeral file that the host discards on every redeploy,
+while every doc continued to claim runs, history and the audit log persist — the
+option rejected in ``docs/adr/0003-hosted-demo-backend-stays-down.md``. Since the
+managed database is now supplied by an external provider rather than bound in the
+blueprint, an unset ``DATABASE_URL`` is a plausible misconfiguration rather than a
+theoretical one, so production refuses to start instead of quietly degrading.
 """
 
 from __future__ import annotations
@@ -40,7 +49,20 @@ def _database_url() -> str:
     Managed Postgres (Render/Heroku) hands out ``postgres://``; SQLAlchemy needs
     an explicit dialect+driver, so we map Postgres URLs onto psycopg v3.
     """
-    url = os.environ.get("DATABASE_URL", DEFAULT_URL)
+    # Imported here, not at module scope: cashflow_risk.auth imports the db
+    # package, so a top-level import would be circular.
+    from cashflow_risk.auth.settings import is_production
+
+    configured = os.environ.get("DATABASE_URL")
+    if is_production() and (configured is None or configured.startswith("sqlite")):
+        raise RuntimeError(
+            "DATABASE_URL must be set to a Postgres URL in production. Refusing to "
+            "start on the SQLite fallback: it is discarded on every redeploy, so "
+            "runs, history and the audit log would stop persisting while the "
+            "documentation still claimed they do. See "
+            "docs/adr/0003-hosted-demo-backend-stays-down.md."
+        )
+    url = configured or DEFAULT_URL
     if url.startswith("postgres://"):
         return "postgresql+psycopg://" + url[len("postgres://") :]
     if url.startswith("postgresql://"):
