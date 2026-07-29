@@ -4,6 +4,12 @@ Reads a company's profile (one call gives statutory deadlines, overdue flags, an
 insolvency/charges links) and turns it into a small set of late-payment risk
 signals. Free, read-only, API-key over HTTP Basic auth. Companies + LLPs only —
 sole traders are not on Companies House, so this never applies to them.
+
+Licence: Companies House data is published under the Open Government Licence v3.0.
+Anything derived from it carries that licence and this attribution — *Contains
+public sector information licensed under the Open Government Licence v3.0*. These
+signals are public filing facts used as model input; they are not a credit
+assessment and not a judgement about a business.
 """
 
 from __future__ import annotations

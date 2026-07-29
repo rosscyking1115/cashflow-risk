@@ -1,4 +1,4 @@
-"""The pinned late-payment label (PLAN §6).
+"""The pinned late-payment label.
 
 - **Prediction origin:** the invoice issue date.
 - **Horizon T:** configurable; the label is resolved as-of ``horizon``.

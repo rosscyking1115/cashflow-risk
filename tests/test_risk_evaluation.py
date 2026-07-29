@@ -1,4 +1,4 @@
-"""Evaluation metrics for the late-payment risk model (PLAN §7).
+"""Evaluation metrics for the late-payment risk model.
 
 PR-AUC vs the prevalence baseline, top-decile precision tied to a realistic chase
 capacity, and calibration error. Hand-checked against known values so the harness

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  ServiceUnavailableError,
   type Analysis,
   type Business,
   type RunSummary,
@@ -36,21 +37,37 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [slow, setSlow] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Distinct from `error`: the API never answered, which is not the same as it
+  // rejecting a request. Reported separately so a dead service is not described
+  // as a slow one, or vice versa.
+  const [unavailable, setUnavailable] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // null = history unavailable (signed out / demo); [] = signed in, none yet.
   const [runs, setRuns] = useState<RunSummary[] | null>(null);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeBusiness, setActiveBusiness] = useState<string | null>(null);
 
-  const load = useCallback(async (request: Promise<Analysis>) => {
+  // Demo runs on generated data. The banner that says so is driven by this, so
+  // it must be set by every path that replaces the analysis.
+  const [isDemo, setIsDemo] = useState(true);
+
+  const load = useCallback(async (request: Promise<Analysis>, demo: boolean) => {
     setLoading(true);
     setError(null);
+    setUnavailable(null);
     setSlow(false);
     const slowTimer = setTimeout(() => setSlow(true), 4000);
     try {
-      setData(await request);
+      const next = await request;
+      // Flip the flag only once the new analysis has actually arrived. Setting it
+      // up front looks equivalent but is not: a failed upload would leave the
+      // previous demo figures on screen with the synthetic-data banner already
+      // removed, which is worse than either state on its own.
+      setData(next);
+      setIsDemo(demo);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
+      if (e instanceof ServiceUnavailableError) setUnavailable(e.message);
+      else setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       clearTimeout(slowTimer);
       setSlow(false);
@@ -81,14 +98,14 @@ export default function Page() {
 
   useEffect(() => {
     void (async () => {
-      await load(fetchDemo());
+      await load(fetchDemo(), true);
       await refreshBusinesses();
       await refreshHistory();
     })();
   }, [load, refreshBusinesses, refreshHistory]);
 
   const handleUpload = async (file: File, opening: number, reserve: number) => {
-    await load(uploadInvoices(file, opening, reserve));
+    await load(uploadInvoices(file, opening, reserve), false);
     await refreshHistory();
   };
 
@@ -98,7 +115,7 @@ export default function Page() {
     setNotice(null);
     const list = await fetchRuns().catch(() => [] as RunSummary[]);
     setRuns(list);
-    if (list.length > 0) await load(fetchRun(list[0].id));
+    if (list.length > 0) await load(fetchRun(list[0].id), false);
   };
 
   const handleInvite = async (email: string) => {
@@ -145,7 +162,7 @@ export default function Page() {
       setRuns([]);
       setNotice("All your stored data has been deleted.");
       await refreshBusinesses();
-      await load(fetchDemo());
+      await load(fetchDemo(), true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed.");
     }
@@ -169,7 +186,7 @@ export default function Page() {
           <ModeBar
             busy={loading}
             canUpload={canUpload}
-            onDemo={() => load(fetchDemo())}
+            onDemo={() => void load(fetchDemo(), true)}
             onUpload={handleUpload}
           />
           {clerkEnabled && <AuthArea />}
@@ -188,18 +205,46 @@ export default function Page() {
         </div>
       )}
 
+      {isDemo && (
+        <div className="mt-4 rounded-xl border border-hairline bg-surface p-4">
+          <p className="text-sm text-ink">
+            <span className="font-semibold">Synthetic demo data.</span> Every figure
+            below — the runway, the shortfall, the amounts and the risk scores — is
+            produced by a seeded generator. No real business, customer or payment is
+            represented here.
+          </p>
+          <p className="mt-1.5 text-xs text-muted">
+            Risk scores rank which invoices to chase first. They are not calibrated
+            probabilities, and on this data no fitted model beat its rules
+            counterpart once look-ahead was removed from the evaluation.
+          </p>
+        </div>
+      )}
+
       {notice && (
         <div className="mt-4 rounded-xl border border-low/40 bg-low-soft p-4">
           <p className="text-sm text-low">{notice}</p>
         </div>
       )}
 
-      {slow && (
+      {slow && !unavailable && !error && (
         <div className="mt-6 rounded-xl border border-hairline bg-surface p-4">
           <p className="font-mono text-sm text-muted">
             Waking the server — the free tier sleeps after a while, so the first
-            request can take up to a minute…
+            request can take up to a minute. This is expected, not a fault.
           </p>
+        </div>
+      )}
+
+      {unavailable && (
+        <div className="mt-6 rounded-xl border border-hairline bg-surface p-5">
+          <p className="text-sm text-ink">{unavailable}</p>
+          <button
+            onClick={() => void load(fetchDemo(), true)}
+            className="mt-2 text-sm font-medium text-accent underline-offset-2 hover:underline"
+          >
+            Try again
+          </button>
         </div>
       )}
 
@@ -207,7 +252,7 @@ export default function Page() {
         <div className="mt-6 rounded-xl border border-high/30 bg-high-soft p-5">
           <p className="text-sm font-medium text-high">{error}</p>
           <button
-            onClick={() => load(fetchDemo())}
+            onClick={() => void load(fetchDemo(), true)}
             className="mt-2 text-sm font-medium text-accent underline-offset-2 hover:underline"
           >
             Try the demo again
@@ -225,7 +270,7 @@ export default function Page() {
             <HistoryPanel
               runs={runs}
               activeId={data.run_id ?? null}
-              onSelect={(id) => load(fetchRun(id))}
+              onSelect={(id) => void load(fetchRun(id), false)}
             />
           )}
 

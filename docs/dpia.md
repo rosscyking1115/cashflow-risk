@@ -83,7 +83,7 @@ accountant read-only).
 | R4 | **Host in a UK/EEA region** (Render Frankfurt) or put appropriate transfer safeguards (UK IDTA/addendum) in place; record the decision | **To do before real data** |
 | R5 | Processor DPAs signed (Clerk, Render); sub-processor lists reviewed | To do |
 | R6 | Self-serve **export** (per-run Excel + full-account JSON via `GET /api/account/export`) + **delete** (`DELETE /api/account`, erases runs/memberships/invitations/business, tested incl. bystander isolation) — both in the dashboard ("Your data"); SAR process documented in the privacy notice (self-serve immediate; email fallback, one-month timescale) | Built |
-| R7 | Every score shows drivers + uncertainty; rectification on request; human always in the loop | Built (explainable scores) |
+| R7 | Every score shows drivers; presented as a *ranking score*, not a calibrated probability (measured mean ECE 0.186, or 0.212 with Companies House signals — see model-evaluation.md), so it cannot be read as odds about a named customer; rectification on request; human always in the loop | Built (explainable scores); calibration outstanding |
 
 ## 6. Sign-off & outcome
 

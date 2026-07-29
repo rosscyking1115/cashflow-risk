@@ -1,10 +1,16 @@
 """Rules-based late-payment risk baseline.
 
-A deliberately transparent scorer (PLAN §10: rules and a logistic form before any
+A deliberately transparent scorer (rules and a logistic form before any
 gradient boosting). It combines leakage-safe features into a log-odds score, maps
-it to a probability, and records the drivers behind it so every score has a
-plain-English "why". This is the baseline the Phase 3 ML model must beat on
+it to the 0–1 range, and records the drivers behind it so every score has a
+plain-English "why". This is the baseline any fitted model must beat on
 held-out *real* data — synthetic performance proves nothing (docs/adr/0002).
+
+The 0–1 output is a **ranking score, not a calibrated probability**: measured mean
+ECE 0.186 on purged folds (0.212 with Companies House signals), systematically
+over-predicting lateness. It orders invoices correctly enough to drive a chase
+list; it does not tell you the odds.
+Calibrating it (isotonic or Platt, fitted on a purged fold) is unfinished work.
 """
 
 from __future__ import annotations

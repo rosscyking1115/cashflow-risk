@@ -3,9 +3,9 @@
 Combines a Forecast run and the cash-at-risk-ranked Risk scores into a short
 brief: the headline risk, the drivers behind it, and the specific invoices to
 chase this week. Templates are deterministic and first-party only — we never
-characterise a customer, recommend borrowing, or give regulated advice (PLAN
-§8.6, docs/security_privacy.md). LLM-written summaries come only once these
-rules are trusted.
+characterise a customer, recommend borrowing, or give regulated advice (see
+``docs/security_privacy.md``). LLM-written summaries come only once these rules
+are trusted.
 """
 
 from __future__ import annotations
@@ -18,8 +18,10 @@ from cashflow_risk.risk.baseline import RiskScore
 
 DISCLAIMER = (
     "This is a cashflow risk estimate for planning support only, based on your "
-    "own data. It is not accounting, tax, legal, credit, or investment advice — "
-    "review with your accountant before acting."
+    "own data. Risk scores rank which invoices to chase first; they are not "
+    "calibrated probabilities, so a score of 60% does not mean a 6-in-10 chance. "
+    "It is not accounting, tax, legal, credit, or investment advice — review with "
+    "your accountant before acting."
 )
 
 
@@ -55,7 +57,7 @@ def build_action_brief(
 
     risk_signals = [
         f"{s.invoice_id}: {_money(s.cash_at_risk)} at risk "
-        f"({s.probability:.0%} late) — {s.drivers[0]}"
+        f"(risk score {s.probability:.0%}) — {s.drivers[0]}"
         for s in top
     ]
 

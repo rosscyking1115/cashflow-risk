@@ -1,4 +1,4 @@
-"""A fitted logistic-regression late-payment model (PLAN §10: rules → logistic).
+"""A fitted logistic-regression late-payment model (rules → logistic).
 
 The second rung above the rules baseline: the same leakage-safe, as-of-issue
 features, but with weights *learned* rather than hand-set, standardised and
@@ -6,10 +6,17 @@ L2-regularised. It is a deep module — callers hand it :class:`TrainingExample`
 and it owns vectorisation, scaling, and the single-class edge case — so swapping
 in LightGBM later changes only what is behind this seam.
 
-Training-time / offline: fit on a rolling-origin train fold, score the test fold
-(see :mod:`cashflow_risk.risk.backtest`). On the synthetic generator this ties the
-rules baseline — issue-time signal is weak by construction (docs/adr/0002); the
-lift is expected once real Companies House distress signals join the features.
+Training-time / offline: fit on a *purged* rolling-origin train fold, score the
+test fold (see :mod:`cashflow_risk.risk.backtest`).
+
+Verdict on the synthetic generator: it does **not** beat the rules baseline.
+With Companies House signals it scores +0.025 mean PR-AUC lift against rules+CH
+at +0.036 — worse, not better. An earlier version of this docstring said it tied
+the baseline and that a lift was "expected once real Companies House distress
+signals join the features"; both claims predate the leakage fix, and the second
+is contradicted by the CH arm that now exists. Issue-time signal is weak by
+construction (docs/adr/0002); whether a fitted model earns its place is a
+question for real data. See ``docs/MODEL_CARD.md``.
 """
 
 from __future__ import annotations

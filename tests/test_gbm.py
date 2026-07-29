@@ -1,4 +1,4 @@
-"""The gradient-boosted rung (PLAN §10: LightGBM only if it earns its keep).
+"""The gradient-boosted rung — LightGBM only if it earns its keep.
 
 Mechanics only, like the logistic tests: it must learn a present signal, be
 reproducible, and handle the degenerate cases — no synthetic-win assertions

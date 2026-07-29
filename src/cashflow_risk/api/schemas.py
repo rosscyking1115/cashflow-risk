@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from cashflow_risk.analysis import Analysis
 from cashflow_risk.forecasting.baselines import WeekForecast
@@ -38,9 +38,22 @@ class WeekDTO(BaseModel):
 
 
 class RiskDTO(BaseModel):
+    """One ranked invoice.
+
+    ``probability`` keeps its name for wire compatibility, but it is a **ranking
+    score**, not a calibrated probability — see the field description.
+    """
+
     invoice_id: str
     customer_id: str
-    probability: float
+    probability: float = Field(
+        description=(
+            "Relative late-payment RANKING SCORE in [0, 1]. NOT a calibrated "
+            "probability: measured mean ECE 0.186 (0.212 with Companies House "
+            "signals), systematically over-predicting lateness. Use it to order "
+            "which invoices to chase; do not read 0.6 as a 60% chance."
+        ),
+    )
     band: str
     cash_at_risk: float
     drivers: list[str]

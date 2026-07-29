@@ -1,4 +1,4 @@
-"""The pinned late-payment label (PLAN §6).
+"""The pinned late-payment label.
 
 Prediction origin = issue date; horizon = configurable T. Target: paid > X days
 after due date OR unpaid at horizon T (censored worst-payers count as positive).

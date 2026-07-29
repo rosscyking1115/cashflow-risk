@@ -3,7 +3,7 @@
 Most of an SME's near-term cash position is *known*: invoices with due dates,
 bills, and scheduled tax obligations. This baseline projects those known, dated
 obligations into 13 weekly buckets, applying an assumed payment delay to
-receivables. The data-science reviewer flagged this (not seasonal-naive) as the
+receivables. This, not seasonal-naive, is the
 real baseline any ML forecast must beat.
 
 It is intentionally simple and deterministic. Probabilistic intervals and
