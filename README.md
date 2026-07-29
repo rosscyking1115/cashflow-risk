@@ -29,23 +29,31 @@ score, not a calibrated probability, and the repo measures how far off it is.
 > about any company. [docs/CREDIBILITY.md](docs/CREDIBILITY.md) states exactly
 > what the numbers may and may not be read as.
 
-**[▶ Live demo](https://cashflow-web-sidu.onrender.com/)** — opens on a synthetic
-dataset, no sign-in.
+### Run it
+
+Two commands, no accounts, no keys:
+
+```bash
+uv sync                          # Python 3.12 via uv
+uv run python scripts/demo.py    # prints an action brief for a synthetic SME
+```
+
+That is the whole path. It generates a synthetic ledger, forecasts 13 weeks,
+ranks the invoices and writes the brief — the same engine the dashboard renders.
+The [dashboard](#getting-started) is two more commands if you want the UI.
 
 > [!NOTE]
-> The demo is hosted on a free tier, which sleeps when idle and is sometimes
-> unavailable altogether. A first load taking around 30 seconds is the host
-> waking up, not a fault. If the dashboard reports that the service could not be
-> reached, it is the hosting rather than the project — everything the demo shows
-> can be reproduced locally with the commands under
-> [Getting started](#getting-started), and the evaluation behind it is in
-> [docs/MODEL_CARD.md](docs/MODEL_CARD.md).
-> [ADR 0003](docs/adr/0003-hosted-demo-backend-stays-down.md) records why the
-> hosted backend is left as it is rather than patched around.
+> **There is no hosted demo.** One ran on a free tier until its database expired;
+> it was retired rather than moved, because this repository's contribution is an
+> honest negative result that lives in the README, the evaluation and the ADRs —
+> none of which a dashboard renders.
+> [ADR 0003](docs/adr/0003-hosted-demo-backend-stays-down.md) records the
+> reasoning, including the free option that would have worked and why it was
+> declined anyway.
 
 ![The dashboard on synthetic data: a 13-week cash-runway readout and forecast, the invoices ranked by cash at risk with plain-English drivers, and the week's recommended action.](docs/images/dashboard.png)
 
-<p align="center"><em>The dashboard on synthetic demo data: runway forecast, cash-at-risk ranking, and the weekly action.</em></p>
+<p align="center"><em>The dashboard running locally on synthetic demo data: runway forecast, cash-at-risk ranking, and the weekly action.</em></p>
 
 ## What it does
 
@@ -242,10 +250,17 @@ an empty database and still match the models (`alembic upgrade head` and
 
 ## Deployment
 
-The API, dashboard, managed Postgres and a daily maintenance cron deploy to Render
-from [`render.yaml`](render.yaml) as a blueprint, which is how the
-[live demo](https://cashflow-web-sidu.onrender.com/) is hosted. Steps in
-[docs/deployment.md](docs/deployment.md).
+**Nothing is currently deployed.** [`render.yaml`](render.yaml) describes how the
+API, dashboard, managed Postgres and daily maintenance cron *were* deployed to
+Render, and remains a working starting point for anyone who wants to host it.
+Steps in [docs/deployment.md](docs/deployment.md); the decision to retire the
+hosted demo is in
+[ADR 0003](docs/adr/0003-hosted-demo-backend-stays-down.md).
+
+Note that the blueprint declares a **free** Render Postgres, which expires 30 days
+after creation. That is what ended the original deployment. Anyone redeploying
+should point `DATABASE_URL` at a database that does not expire — the engine
+refuses to start in production without one rather than falling back to SQLite.
 
 ## Project layout
 

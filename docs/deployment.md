@@ -1,5 +1,15 @@
 # Deployment runbook (Render)
 
+> **Nothing is deployed from this today.** The hosted demo was retired in July
+> 2026 — see [ADR 0003](adr/0003-hosted-demo-backend-stays-down.md). This runbook
+> is kept as a working description of how it was done and what someone else would
+> repeat. The service hostnames below are examples, not live endpoints.
+>
+> One thing to change if you follow it: `render.yaml` declares a **free** Render
+> Postgres, and those expire 30 days after creation. That expiry ended the
+> original deployment. Point `DATABASE_URL` at a database that does not expire;
+> the engine refuses to start in production without one.
+
 Deploys the API (FastAPI), the dashboard (Next.js), and managed Postgres from
 [`render.yaml`](../render.yaml). One blueprint, one git push.
 
@@ -87,8 +97,8 @@ services — no compute moves, you just point DNS at them.
    `api.yourdomain.com` to **cashflow-api**. Render shows the target host to
    point at.
 3. **Add DNS records in Cloudflare** (proxied — orange cloud):
-   - `app` → CNAME → `cashflow-web-sidu.onrender.com`
-   - `api` → CNAME → `cashflow-api-zo5f.onrender.com`
+   - `app` → CNAME → your `cashflow-web` host on Render
+   - `api` → CNAME → your `cashflow-api` host on Render
    (Use CNAME flattening if you want the apex domain.)
 4. **SSL mode: Full (strict)** — Render serves valid certificates, so anything
    less (e.g. Flexible) causes redirect loops.
