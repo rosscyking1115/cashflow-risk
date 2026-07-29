@@ -1,5 +1,18 @@
 # Render Blueprint — API + web dashboard + managed Postgres.
 #
+# NOT CURRENTLY DEPLOYED. The hosted demo was retired in July 2026; see
+# docs/adr/0003-hosted-demo-backend-stays-down.md for why. This file is kept
+# because it is a working description of how the project was deployed and a
+# starting point for anyone who wants to host it — not because anything is
+# running from it.
+#
+# Read this before redeploying: `cashflow-db` below is a FREE Render Postgres,
+# and free Render databases expire 30 days after creation. That expiry is what
+# ended the original deployment — the API runs `alembic upgrade head` on start,
+# so a dead database stops it booting at all. Point DATABASE_URL at a database
+# that does not expire. The engine now refuses to start in production without
+# one rather than silently falling back to SQLite.
+#
 # Deploy: push this repo to GitHub, then in Render choose "New > Blueprint" and
 # point it at the repo. Render provisions all three from this file. Two values
 # must be set by hand after the first deploy (their URLs aren't known until the
