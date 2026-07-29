@@ -40,6 +40,8 @@ dataset, no sign-in.
 > can be reproduced locally with the commands under
 > [Getting started](#getting-started), and the evaluation behind it is in
 > [docs/MODEL_CARD.md](docs/MODEL_CARD.md).
+> [ADR 0003](docs/adr/0003-hosted-demo-backend-stays-down.md) records why the
+> hosted backend is left as it is rather than patched around.
 
 ![The dashboard on synthetic data: a 13-week cash-runway readout and forecast, the invoices ranked by cash at risk with plain-English drivers, and the week's recommended action.](docs/images/dashboard.png)
 
