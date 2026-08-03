@@ -100,19 +100,10 @@ The engine runs under **`mypy --strict`** — `strict = true` in
 [`pyproject.toml`](pyproject.toml), not a handful of strict-ish flags — across the
 whole `cashflow_risk` package, with no `ignore_errors` and no per-module opt-outs
 beyond a few `ignore_missing_imports` entries for third-party libraries that ship
-no stubs.
-
-It is a gate, not a habit. CI runs `uv run mypy` as its own step on every push and
-every pull request, with no `continue-on-error`, so a type error fails the build
-and the branch does not merge. Same for `ruff check` and the test suite. Run it
-yourself:
-
-```bash
-uv run mypy        # Success: no issues found
-```
-
-Scope worth knowing: the check covers the published package. `tests/` and
-`scripts/` are outside it.
+no stubs. It is a gate, not a habit: CI runs it as its own step with no
+`continue-on-error`, so a type error fails the build and the branch does not
+merge. Same for `ruff check` and the test suite.
+[Run it yourself](docs/running-locally.md#testing-and-ci).
 
 ## Model evaluation
 
@@ -189,36 +180,16 @@ processing synthetic data does not trigger either one.
 
 ## Getting started
 
-You need [uv](https://docs.astral.sh/uv/) (Python 3.12) and Node.js 20+.
-
-Run the engine and print an action brief for a synthetic business:
+You need [uv](https://docs.astral.sh/uv/) (Python 3.12), and Node.js 20+ for the
+dashboard. No accounts, no API keys.
 
 ```bash
 uv sync                          # create the venv + install deps
-uv run pytest                    # run the test suite
 uv run python scripts/demo.py    # print an action brief for a synthetic SME
 ```
 
-Reproduce the model evaluation:
-
-```bash
-uv run python scripts/eval_risk_baseline.py   # rules-baseline metrics
-uv run python scripts/bakeoff_risk.py         # rules vs logistic vs GBM, backtested
-```
-
-Run the dashboard, which needs two processes:
-
-```bash
-# 1. API. CASHFLOW_ENV=dev enables a local token so uploads work without a
-#    hosted login; omit it and only the public demo is available.
-CASHFLOW_ENV=dev uv run uvicorn cashflow_risk.api:app --port 8000
-
-# 2. Web dashboard (another terminal); npm install only the first time.
-cd web && npm install && npm run dev   # http://localhost:3000
-```
-
-It opens on the public demo. **Invoices CSV** analyses your own export; the tenant
-comes from the token, never from client input.
+The dashboard, the configuration table, migrations and the check commands are in
+**[docs/running-locally.md](docs/running-locally.md)**.
 
 > [!NOTE]
 > The synthetic data is the only data. Every number in this repository comes from
@@ -226,46 +197,6 @@ comes from the token, never from client input.
 > magnitudes are illustrative and nothing here is evidence of predictive skill on
 > a real ledger. [docs/CREDIBILITY.md](docs/CREDIBILITY.md) sorts every figure
 > into what it can and cannot support.
-
-## Configuration
-
-Configuration comes from the environment. The defaults are safe, so it runs
-locally with none of it set. Copy [`.env.example`](.env.example) to `.env` to
-change anything.
-
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | Postgres connection string (defaults to a local SQLite file) |
-| `CASHFLOW_JWT_SECRET` | Signing secret; **required** in production |
-| `CASHFLOW_ENV` | `dev` enables the local dev-token endpoint |
-| `CLERK_JWKS_URL`, `CLERK_ISSUER` | Enable Clerk-verified sign-in on the API |
-| `COMPANIES_HOUSE_API_KEY` | Enables customer risk enrichment |
-| `SENTRY_DSN` | Enables PII-scrubbed error reporting (optional) |
-| `CASHFLOW_RETENTION_DAYS` | Auto-purge window for results (default 730) |
-| `NEXT_PUBLIC_API_BASE` | Points the web app at a non-default API |
-
-## Database and migrations
-
-Local dev creates the SQLite tables on startup. Managed databases use Alembic, and
-the API runs `alembic upgrade head` when it deploys:
-
-```bash
-uv run alembic upgrade head                              # apply migrations
-uv run alembic revision --autogenerate -m "describe it"  # after a model change
-```
-
-## Testing and CI
-
-```bash
-uv run pytest          # tests
-uv run ruff check .    # lint
-uv run mypy            # type-check (strict)
-```
-
-Every push and pull request runs those, plus a check that the migrations apply to
-an empty database and still match the models (`alembic upgrade head` and
-`alembic check`), plus the Next.js production build. See
-[.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ## Deployment
 
@@ -310,6 +241,7 @@ companies; [CHANGELOG.md](CHANGELOG.md) records the correction.
 
 ## Documentation
 
+- [docs/running-locally.md](docs/running-locally.md) — the dashboard, configuration, migrations, and the check commands
 - [docs/MODEL_CARD.md](docs/MODEL_CARD.md) — what the model is, what it scored, and what it may not be used for
 - [docs/CREDIBILITY.md](docs/CREDIBILITY.md) — what each number may and may not be read as
 - [docs/model-evaluation.md](docs/model-evaluation.md) — how the risk model is measured, and what it scored
