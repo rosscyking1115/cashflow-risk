@@ -25,12 +25,16 @@ Deploys the API (FastAPI), the dashboard (Next.js), and managed Postgres from
    gh repo create cashflow-risk --private --source . --push   # or your own remote
    ```
 2. **Create the Blueprint.** In Render: **New → Blueprint**, select the repo.
-   Render reads `render.yaml` and provisions:
+   Render reads `render.yaml` and provisions **four** services:
    - `cashflow-db` — managed Postgres (`DATABASE_URL` injected into the API).
    - `cashflow-api` — the Docker API; `CASHFLOW_JWT_SECRET` is generated; CORS
      trusts `*.onrender.com` via `CASHFLOW_ALLOWED_ORIGIN_REGEX`. Migrations run
      on start (`alembic upgrade head`).
    - `cashflow-web` — the Next.js dashboard.
+   - `cashflow-daily-maintenance` — the retention purge and Companies House
+     signal refresh, on a daily cron. **This is the one service not on the free
+     tier**: Render does not offer cron jobs on free, so it is declared as
+     `starter` and will bill. Remove it from `render.yaml` if you do not want it.
 3. **Wire the web → API URL (one manual step).** After the first deploy, copy the
    API URL (e.g. `https://cashflow-api.onrender.com`) into the **`cashflow-web`**
    service's `NEXT_PUBLIC_API_BASE` env var, then redeploy the web service with
@@ -57,7 +61,11 @@ Deploys the API (FastAPI), the dashboard (Next.js), and managed Postgres from
 - **DPIA.** Required before processing the first *real* sole-trader data. The
   public demo (synthetic) does not trigger it. See `security_privacy.md`.
 - **Free tier.** Free web services cold-start after inactivity (first request is
-  slow). Render's free Postgres expires after ~90 days — upgrade or recreate.
+  slow). Render's free Postgres **expires 30 days after creation** (14-day grace,
+  then deletion) — that expiry is what ended the original deployment. An earlier
+  revision of this runbook said ~90 days, which was wrong and contradicted
+  `render.yaml`, [ADR 0003](adr/0003-hosted-demo-backend-stays-down.md) and the
+  README. Point `DATABASE_URL` at a database that does not expire.
 - **Migrations** run automatically on each API start; they are idempotent. To run
   manually: `uv run alembic upgrade head` with `DATABASE_URL` set.
 - **Rollback.** Use Render's "Rollback" to a previous deploy; the DB is unchanged

@@ -174,8 +174,8 @@ The [SQLite guard](../../src/cashflow_risk/db/session.py) was extracted from the
 abandoned migration and merged on its own. Production now refuses to start unless
 `DATABASE_URL` is set to a non-SQLite URL, so the architecture refused above
 cannot arrive by way of a missing environment variable. That holds wherever the
-database lives and whether or not anything is deployed. Four tests cover it, and
-disabling the guard fails two of them.
+database lives and whether or not anything is deployed. It is covered by tests in
+`tests/test_persistence.py`, and disabling the guard fails them.
 
 ### Consequences of retiring
 

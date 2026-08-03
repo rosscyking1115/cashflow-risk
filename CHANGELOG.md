@@ -6,6 +6,23 @@ somebody finds the diff.
 
 ## Unreleased
 
+### Removed — the dashboard screenshot asserted a corrected-away framing
+
+`docs/images/dashboard.png` was committed before seven subsequent changes to
+`web/`, three of which changed exactly what a reader would look at it for. The
+image lacked the **"Synthetic demo data"** banner, lacked the note that risk
+scores are **not calibrated probabilities**, and labelled each row **"39% late"**
+where the application now says **"risk 39%"** with a tooltip stating it is a
+ranking score.
+
+So the README's own honesty block said every figure comes from a seeded
+generator, directly above the one version of the dashboard that did not say so,
+still presenting the probability framing this project has published a correction
+against. Verified by running the current dashboard and comparing.
+
+Removed rather than left in place. A missing image is honest; that one was not. A
+replacement is pending.
+
 ### Corrected — the bake-off had no null distribution
 
 Every scorer in `scripts/bakeoff_risk.py` is reported as a lift over

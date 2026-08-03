@@ -66,6 +66,13 @@ extend-exclude = ["alembic"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+# Google style, recorded so the linter and any doc generator agree. D1
+# (missing-docstring) is deliberately NOT selected: a docstring written to
+# satisfy a linter costs maintenance and teaches readers that docstrings here are
+# noise. What is documented is chosen by priority, not by coverage.
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

@@ -14,6 +14,13 @@ into each customer's score, and writes a short action brief. Every score comes
 with the reason behind it. The score orders the chase list; it is a ranking
 score, not a calibrated probability, and the repo measures how far off it is.
 
+> **A current screenshot is pending.** The image that used to sit here was taken
+> before the dashboard gained its synthetic-data banner and before it stopped
+> presenting risk scores as calibrated probabilities, so it showed a version of
+> this product whose framing the project has since published a correction against.
+> It has been removed rather than left in place. Run the dashboard with the two
+> commands under [Getting started](#getting-started) to see the current one.
+
 > Part of my responsible-fintech cluster, alongside
 > [responsible-neobank-growth](https://github.com/rosscyking1115/responsible-neobank-growth)
 > and
@@ -51,10 +58,6 @@ The [dashboard](#getting-started) is two more commands if you want the UI.
 > reasoning, including the free option that would have worked and why it was
 > declined anyway.
 
-![The dashboard on synthetic data: a 13-week cash-runway readout and forecast, the invoices ranked by cash at risk with plain-English drivers, and the week's recommended action.](docs/images/dashboard.png)
-
-<p align="center"><em>The dashboard running locally on synthetic demo data: runway forecast, cash-at-risk ranking, and the weekly action.</em></p>
-
 ## What it does
 
 - Forecasts 13 weeks of cash from an invoice ledger, timing each invoice by when
@@ -64,7 +67,12 @@ The [dashboard](#getting-started) is two more commands if you want the UI.
 - Writes an action brief: the chase list for the week and what it does to the
   runway.
 - Reads a customer's Companies House record (overdue accounts, insolvency,
-  charges) into their late-payment score, refreshed by a daily job.
+  charges) into their late-payment score. A daily refresh job exists
+  ([`scripts/daily_maintenance.py`](scripts/daily_maintenance.py), declared as a
+  cron in [`render.yaml`](render.yaml)) but **is not running anywhere** — nothing
+  is deployed. No figure reported in this repository has touched the live
+  Companies House API; the evaluation's Companies House arm uses generated
+  signals, which is what the synthetic-data boundary above means in practice.
 - Separates tenants. Owners and invited accountants get different roles, every
   query is scoped to a business, and a cross-tenant read is refused.
 
@@ -90,9 +98,9 @@ Next.js, React, Tailwind, Clerk, Sentry, Render, GitHub Actions.
 
 The engine runs under **`mypy --strict`** — `strict = true` in
 [`pyproject.toml`](pyproject.toml), not a handful of strict-ish flags — across the
-whole `cashflow_risk` package, 44 source files, no `ignore_errors` and no
-per-module opt-outs beyond four `ignore_missing_imports` entries for third-party
-libraries that ship no stubs.
+whole `cashflow_risk` package, with no `ignore_errors` and no per-module opt-outs
+beyond a few `ignore_missing_imports` entries for third-party libraries that ship
+no stubs.
 
 It is a gate, not a habit. CI runs `uv run mypy` as its own step on every push and
 every pull request, with no `continue-on-error`, so a type error fails the build
@@ -100,7 +108,7 @@ and the branch does not merge. Same for `ruff check` and the test suite. Run it
 yourself:
 
 ```bash
-uv run mypy        # Success: no issues found in 44 source files
+uv run mypy        # Success: no issues found
 ```
 
 Scope worth knowing: the check covers the published package. `tests/` and
