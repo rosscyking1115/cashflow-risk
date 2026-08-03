@@ -6,6 +6,53 @@ somebody finds the diff.
 
 ## Unreleased
 
+### Corrected — the bake-off had no null distribution
+
+Every scorer in `scripts/bakeoff_risk.py` is reported as a lift over
+**prevalence**, and that comparison assumes an uninformative scorer scores exactly
+prevalence. At these fold sizes it does not: average precision is upward-biased
+against bare prevalence on small samples, and a uniform-random ranking scores
+**+0.0212** on the published protocol, 95% interval **[−0.0149, +0.0613]**.
+
+**Every scorer figure the project publishes is inside that interval** — rules
++0.022, logistic +0.021, gbm −0.004, rules+CH +0.036, logistic+CH +0.025, gbm+CH
++0.005. Only the health-oracle ceiling at +0.100 clears it. The pre-declared
+−0.012 margin was being read as a meaningful negative inside a band roughly ±0.04
+wide.
+
+The same measurement also found the project had been **understating** its one real
+result. Paired against a random scorer on identical folds over 40 seeds, rules+CH
+is **+0.032 (t = 3.31)** and rules is **+0.019 (t = 2.36)**, while logistic+CH is
++0.003 (t = 0.30). The rules scorer carries signal; the learned arms do not. Five
+seeds cannot resolve either half, and five seeds is what is published.
+
+The defect class is **a comparison with no null distribution**. The baseline was
+derived from the label distribution when it should have been the same protocol run
+with the scores replaced by noise.
+
+Unaffected, and worth saying because it is the substance of the project: the purge
+findings. Those are paired within-seed comparisons on identical test windows with a
+control that cannot move, which is the right design. The calibration measurements
+are likewise unaffected.
+
+Full account in [docs/evaluation-null.md](docs/evaluation-null.md). Reproduced by
+`scripts/null_risk_bakeoff.py` and `scripts/controls_risk_generator.py`, both added
+in this change — a finding whose evidence lives outside the repository is not a
+finding.
+
+`bakeoff_risk.py` itself is **not** changed. It still reports lifts over prevalence
+on five seeds. Folding the null into its output and raising the seed count is
+outstanding work.
+
+### Checked — the benchmark is not circular
+
+Recorded because it was the suspicion that started the audit. The generator drives
+lateness from latent customer health and a latent macro factor, and the model sees
+neither. Scoring the folds with the generator's own drivers gives +0.309 (`p_late`),
++0.247 (`macro`) and +0.100 (`customer_health`) against the best shipped scorer's
++0.036 — so the models are not recovering the construction. Severing lateness from
+every latent variable collapses every arm. `scripts/controls_risk_generator.py`.
+
 ### Corrected — synthetic customers named real companies
 
 The synthetic data generator assigned company numbers `10000000`–`10000029` and

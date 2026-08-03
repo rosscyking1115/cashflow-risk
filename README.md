@@ -145,6 +145,17 @@ reason not to: the evaluation was capable of detecting that its own models had n
 edge, and it did. The purge, the matched-window comparison and the rules control
 are the machinery that made a negative result findable instead of comfortable.
 
+**And that machinery had a hole in it, which an audit of this repository found.**
+Every lift above is measured against prevalence, and at these fold sizes an
+uninformative scorer already scores **+0.0212** on that scale — so all six scorer
+figures sit inside the null, and the −0.012 margin is being read inside a band
+roughly ±0.04 wide. The same measurement done properly, paired against a random
+scorer over 40 seeds, says something the five-seed protocol could not see: the
+**rules scorer carries real signal** (rules+CH +0.032, t = 3.31) and the fitted
+rungs still do not. The defect class is *a comparison with no null distribution*.
+[docs/evaluation-null.md](docs/evaluation-null.md) reports both halves, and
+[`scripts/null_risk_bakeoff.py`](scripts/null_risk_bakeoff.py) reproduces them.
+
 ## Security and privacy
 
 An invoice ledger is commercially sensitive, and where the customers are sole
@@ -268,7 +279,7 @@ refuses to start in production without one rather than falling back to SQLite.
 |---|---|
 | `src/cashflow_risk/` | The engine: `domain`, `datagen`, `features`, `forecasting`, `risk`, `reporting`, `ingestion`, `enrichment`, `db`, `auth`, `api` |
 | `web/` | Next.js dashboard |
-| `scripts/` | `demo.py`, the model evaluation and risk bake-off, and the daily maintenance job |
+| `scripts/` | `demo.py`, the model evaluation and risk bake-off, the null and circularity controls, and the daily maintenance job |
 | `alembic/` | Database migrations |
 | `docs/` | Architecture, and the security and privacy docs |
 
@@ -294,6 +305,8 @@ companies; [CHANGELOG.md](CHANGELOG.md) records the correction.
 - [docs/MODEL_CARD.md](docs/MODEL_CARD.md) — what the model is, what it scored, and what it may not be used for
 - [docs/CREDIBILITY.md](docs/CREDIBILITY.md) — what each number may and may not be read as
 - [docs/model-evaluation.md](docs/model-evaluation.md) — how the risk model is measured, and what it scored
+- [docs/evaluation-null.md](docs/evaluation-null.md) — the bake-off had no null distribution: what that over-claimed, and what it under-claimed
+- [CHANGELOG.md](CHANGELOG.md) — corrections, recorded as corrections
 - [docs/architecture.md](docs/architecture.md) — architecture and its trade-offs
 - [CONTEXT.md](CONTEXT.md) — the domain model and ubiquitous language
 - [SECURITY.md](SECURITY.md) — security posture and vulnerability reporting
