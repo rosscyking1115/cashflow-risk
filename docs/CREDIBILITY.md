@@ -47,6 +47,7 @@ check whether an estimator recovered the truth, because the truth is not observe
 | Features are computable at the decision time they claim | The as-of store reads only *prior settled* invoices and excludes the invoice being scored. |
 | The health-oracle ceiling bounds what any health proxy could extract | Reading latent health directly scores +0.100 mean lift, so no observable proxy can beat that on these folds. |
 | The purge changes the answer, and by how much | Both arms run on identical test windows; the rules control moves +0.000, which is what makes the other deltas readable. |
+| The synthetic Companies House signals name no real company | Customer identifiers are `SYNTH-0007`, ten characters with a hyphen — structurally invalid as a Companies House number, so they cannot collide on shape rather than on an unissued range. They previously used real eight-digit numbers; see [CHANGELOG.md](../CHANGELOG.md). |
 
 **Known weakness in the purge guard, recorded rather than fixed.** The test that
 fails if a fold trains on an unresolved label is pinned to one configuration —

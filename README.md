@@ -283,6 +283,12 @@ attribution: *Contains public sector information licensed under the Open
 Government Licence v3.0.* Every other figure in the repository is generated, not
 sourced.
 
+The generator's Companies House signals are fabricated, so the customers they
+belong to carry **deliberately non-resolvable identifiers** — `SYNTH-0007`, which
+is not a valid Companies House number in any format and therefore cannot name a
+real company. They previously used real eight-digit numbers, which did name real
+companies; [CHANGELOG.md](CHANGELOG.md) records the correction.
+
 ## Documentation
 
 - [docs/MODEL_CARD.md](docs/MODEL_CARD.md) — what the model is, what it scored, and what it may not be used for
