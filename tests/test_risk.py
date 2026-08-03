@@ -9,6 +9,7 @@ from datetime import date
 
 import pytest
 
+from cashflow_risk.datagen.generator import synthetic_company_number
 from cashflow_risk.enrichment.companies_house import CompanySignals
 from cashflow_risk.features.store import InvoiceFeatures
 from cashflow_risk.risk.baseline import rank_by_cash_at_risk, score_late_probability
@@ -74,7 +75,7 @@ def test_chronic_late_payer_lands_in_a_high_band_with_a_reason() -> None:
 def test_companies_house_signals_raise_the_score_and_add_a_driver() -> None:
     base = score_late_probability(_feat(customer_late_rate=0.2))
     insolvent = CompanySignals(
-        company_number="12345678",
+        company_number=synthetic_company_number(1),
         status="active",
         accounts_overdue=True,
         accounts_next_due=None,
@@ -89,9 +90,11 @@ def test_companies_house_signals_raise_the_score_and_add_a_driver() -> None:
 
 
 def test_ranking_applies_signals_by_company_number() -> None:
-    clean = _feat(invoice_id="A", customer_late_rate=0.2, company_number="00000001")
-    flagged = _feat(invoice_id="B", customer_late_rate=0.2, company_number="00000002")
-    signals = {"00000002": CompanySignals("00000002", "active", True, None, True, True, True)}
+    clean_no = synthetic_company_number(1)
+    flagged_no = synthetic_company_number(2)
+    clean = _feat(invoice_id="A", customer_late_rate=0.2, company_number=clean_no)
+    flagged = _feat(invoice_id="B", customer_late_rate=0.2, company_number=flagged_no)
+    signals = {flagged_no: CompanySignals(flagged_no, "active", True, None, True, True, True)}
 
     ranked = {s.invoice_id: s for s in rank_by_cash_at_risk([clean, flagged], signals)}
 

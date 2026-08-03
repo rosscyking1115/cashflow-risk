@@ -6,6 +6,7 @@ from datetime import date
 
 import pytest
 
+from cashflow_risk.datagen.generator import synthetic_company_number
 from cashflow_risk.features.store import InvoiceFeatures
 from cashflow_risk.risk.dataset import TrainingExample
 from cashflow_risk.risk.evaluation import average_precision, prevalence
@@ -94,7 +95,7 @@ def test_model_learns_from_companies_house_signals_alone() -> None:
             TrainingExample(
                 features=base.features,
                 label=late,
-                signals=signals(f"{i:08d}", distressed=late != noisy_clean),
+                signals=signals(synthetic_company_number(i), distressed=late != noisy_clean),
             )
         )
 

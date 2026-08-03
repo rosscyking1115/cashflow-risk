@@ -8,7 +8,11 @@ pinned label resolved at issue_date + horizon.
 from datetime import date, timedelta
 from decimal import Decimal
 
-from cashflow_risk.datagen.generator import GeneratorConfig, generate_dataset
+from cashflow_risk.datagen.generator import (
+    GeneratorConfig,
+    generate_dataset,
+    synthetic_company_number,
+)
 from cashflow_risk.domain import Invoice, InvoiceStatus
 from cashflow_risk.risk.dataset import build_training_examples
 from cashflow_risk.risk.evaluation import average_precision, prevalence
@@ -76,9 +80,10 @@ def test_signals_are_attached_by_company_number() -> None:
     from cashflow_risk.enrichment.companies_house import CompanySignals
 
     ltd = _inv("A", "C1", issue=date(2026, 1, 1), due=date(2026, 1, 31), paid=date(2026, 1, 20))
-    ltd = ltd.model_copy(update={"company_number": "12345678"})
+    number = synthetic_company_number(1)
+    ltd = ltd.model_copy(update={"company_number": number})
     sole = _inv("B", "C2", issue=date(2026, 1, 1), due=date(2026, 1, 31), paid=date(2026, 1, 20))
-    signals = {"12345678": CompanySignals("12345678", "active", True, None, False, True, False)}
+    signals = {number: CompanySignals(number, "active", True, None, False, True, False)}
 
     examples = build_training_examples([ltd, sole], horizon_days=120, signals=signals)
     by_id = {e.features.invoice_id: e for e in examples}

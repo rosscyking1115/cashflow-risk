@@ -37,7 +37,7 @@ def test_scrub_redacts_financial_and_identity_keys_recursively() -> None:
             "customer_name": "Sensitive Widgets Ltd",
             "detail": {"opening_balance": 1000, "invoices": ["INV-1"], "week": 3},
         },
-        "contexts": {"custom": {"email": "owner@acme.co", "company_number": "12345678"}},
+        "contexts": {"custom": {"email": "owner@acme.co", "company_number": "SYNTH-0001"}},
     }
 
     scrubbed = scrub_event(event, {})

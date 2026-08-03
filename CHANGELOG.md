@@ -99,6 +99,32 @@ signal record and never enters a random draw or a feature — so every bake-off
 number is bit-identical before and after. This was a correctness and
 public-conduct fix, not a numerical one.
 
-Not covered by this change: several test fixtures use short real-format numbers
-(`00000001`, `12345678`) and attach invented signals to them in the same way, at
-much smaller scale and in no published figure.
+### Corrected — the same defect in the test fixtures
+
+The generator fix above initially left the test suite alone, on the grounds that
+the fixtures were small and fed no published figure. Scale does not change the
+principle: a fixture asserting `has_insolvency` against an identifier that
+resolves to a real company is the same fabricated adverse claim in the same
+public repository.
+
+Every fixture identifier now comes from `synthetic_company_number()`. The ones
+replaced, and what they actually were:
+
+| Was | Really | Asserted against it |
+| --- | --- | --- |
+| `12345678` | BOCIOC M LIMITED (dissolved) | `has_insolvency`, `accounts_overdue`, `has_charges` |
+| `00000006` | MARINE AND GENERAL MUTUAL LIFE ASSURANCE SOCIETY (dissolved, incorporated 1862) | `accounts_overdue`, `has_insolvency`, status `"dissolved"` |
+| `00000001`–`00000003`, `00000007` | issued numbers | `accounts_overdue` |
+| `f"{i:08d}"` × 200 in `test_model.py` | `00000000`–`00000199` | `has_insolvency` on half of them |
+
+Two things worth recording. **`12345678` is a real company** — the number that
+looks most obviously like a placeholder was issued, and the fixture asserting
+insolvency against it read as a lookup rather than an invention. And the largest
+instance was **constructed, not literal**: 200 identifiers built by an f-string,
+which a search for literal eight-digit strings does not find. The population
+search had to cover format specifiers as well as literals.
+
+Verified the same way as the generator fix, with the checker itself controlled in
+the same run: `SYNTH-0006`, `SYNTH-0099` and `SYNTH-0199` each return nothing,
+while `00000006` and `12345678` each returned a named company. Three 404s from an
+unchecked tool would prove nothing.
