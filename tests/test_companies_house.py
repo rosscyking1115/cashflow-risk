@@ -4,6 +4,7 @@ from datetime import date
 
 import httpx
 
+from cashflow_risk.datagen.generator import synthetic_company_number
 from cashflow_risk.db import get_session
 from cashflow_risk.db import repository as repo
 from cashflow_risk.enrichment.companies_house import (
@@ -15,11 +16,17 @@ from cashflow_risk.enrichment.companies_house import (
     parse_company_profile,
 )
 
+# Non-resolvable identifiers. These fixtures assert overdue filings, charges and
+# insolvency, and a fabricated adverse claim must never name a real company.
+LTD = synthetic_company_number(1)
+CACHED = synthetic_company_number(6)
+UNKNOWN = synthetic_company_number(99)
+
 PROFILE = {
     "company_status": "active",
     "accounts": {"next_accounts": {"due_on": "2026-09-30", "overdue": True}},
     "confirmation_statement": {"overdue": False},
-    "links": {"self": "/company/12345678", "charges": "/company/12345678/charges"},
+    "links": {"self": f"/company/{LTD}", "charges": f"/company/{LTD}/charges"},
 }
 
 
@@ -28,7 +35,7 @@ def _client(handler) -> httpx.Client:
 
 
 def test_parse_profile_extracts_signals() -> None:
-    signals = parse_company_profile("12345678", PROFILE)
+    signals = parse_company_profile(LTD, PROFILE)
 
     assert signals.accounts_overdue is True
     assert signals.accounts_next_due == date(2026, 9, 30)
@@ -38,7 +45,7 @@ def test_parse_profile_extracts_signals() -> None:
 
 
 def test_parse_profile_tolerates_missing_fields() -> None:
-    signals = parse_company_profile("00000006", {})
+    signals = parse_company_profile(CACHED, {})
 
     assert signals.status is None
     assert signals.accounts_overdue is False
@@ -48,12 +55,12 @@ def test_parse_profile_tolerates_missing_fields() -> None:
 
 def test_fetch_returns_signals_and_none_for_unknown() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/company/12345678":
+        if request.url.path == f"/company/{LTD}":
             return httpx.Response(200, json=PROFILE)
         return httpx.Response(404)
 
-    assert fetch_company_signals("12345678", api_key="k", client=_client(handler)).accounts_overdue
-    assert fetch_company_signals("99999999", api_key="k", client=_client(handler)) is None
+    assert fetch_company_signals(LTD, api_key="k", client=_client(handler)).accounts_overdue
+    assert fetch_company_signals(UNKNOWN, api_key="k", client=_client(handler)) is None
 
 
 def test_filing_risk_logit_orders_by_severity() -> None:
@@ -69,14 +76,14 @@ def test_filing_risk_logit_orders_by_severity() -> None:
 
 def test_signals_cache_round_trips() -> None:
     session = next(get_session())
-    signals = CompanySignals("00000006", "active", True, date(2026, 9, 30), False, False, True)
+    signals = CompanySignals(CACHED, "active", True, date(2026, 9, 30), False, False, True)
 
     repo.upsert_company_signals(session, signals)
-    assert repo.get_company_signals(session, "00000006") == signals
+    assert repo.get_company_signals(session, CACHED) == signals
 
-    updated = CompanySignals("00000006", "dissolved", False, None, False, True, True)
+    updated = CompanySignals(CACHED, "dissolved", False, None, False, True, True)
     repo.upsert_company_signals(session, updated)
-    assert repo.get_company_signals(session, "00000006") == updated
+    assert repo.get_company_signals(session, CACHED) == updated
 
 
 def test_signals_for_reads_cache_and_skips_uncached_without_key() -> None:
@@ -84,10 +91,10 @@ def test_signals_for_reads_cache_and_skips_uncached_without_key() -> None:
 
     session = next(get_session())
     repo.upsert_company_signals(
-        session, CompanySignals("00000006", "active", True, None, False, False, False)
+        session, CompanySignals(CACHED, "active", True, None, False, False, False)
     )
 
-    result = signals_for(session, ["00000006", None, "99999999"], api_key=None)
+    result = signals_for(session, [CACHED, None, UNKNOWN], api_key=None)
 
-    assert result["00000006"].accounts_overdue is True
-    assert "99999999" not in result  # not cached and no key -> skipped, no error
+    assert result[CACHED].accounts_overdue is True
+    assert UNKNOWN not in result  # not cached and no key -> skipped, no error

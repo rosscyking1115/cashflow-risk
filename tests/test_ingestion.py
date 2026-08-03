@@ -146,7 +146,7 @@ def test_parses_optional_company_number() -> None:
     csv_text = textwrap.dedent(
         """\
         invoice_id,customer_id,amount,issue_date,due_date,company_number
-        INV-1,Acme Ltd,1000,2026-01-01,2026-01-31,12345678
+        INV-1,Acme Ltd,1000,2026-01-01,2026-01-31,SYNTH-0001
         INV-2,Sole Trader,500,2026-01-01,2026-02-01,
         """
     )
@@ -154,7 +154,7 @@ def test_parses_optional_company_number() -> None:
     result = parse_invoices_csv(csv_text, business_id="biz")
 
     assert result.ok
-    assert result.records[0].company_number == "12345678"
+    assert result.records[0].company_number == "SYNTH-0001"
     assert result.records[1].company_number is None
 
 

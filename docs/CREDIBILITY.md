@@ -47,6 +47,7 @@ check whether an estimator recovered the truth, because the truth is not observe
 | Features are computable at the decision time they claim | The as-of store reads only *prior settled* invoices and excludes the invoice being scored. |
 | The health-oracle ceiling bounds what any health proxy could extract | Reading latent health directly scores +0.100 mean lift, so no observable proxy can beat that on these folds. |
 | The purge changes the answer, and by how much | Both arms run on identical test windows; the rules control moves +0.000, which is what makes the other deltas readable. |
+| The synthetic Companies House signals name no real company | Customer identifiers are `SYNTH-0007`, ten characters with a hyphen — structurally invalid as a Companies House number, so they cannot collide on shape rather than on an unissued range. They previously used real eight-digit numbers; see [CHANGELOG.md](../CHANGELOG.md). |
 
 **Known weakness in the purge guard, recorded rather than fixed.** The test that
 fails if a fold trains on an unresolved label is pinned to one configuration —
@@ -61,6 +62,16 @@ gate margin moved **+0.003 → −0.012**, both on matched windows. An earlier r
 published **74.5%** and **+0.020**; those come from the older all-four-unpurged-folds
 protocol. Both are real numbers, and quoting either beside a matched-window figure
 reintroduces the exact confound the matched-window design exists to remove.
+
+**The comparison behind Pile 3's ranking figures had no null distribution.** Every
+lift in [model-evaluation.md](model-evaluation.md) is measured against prevalence,
+and an uninformative scorer already scores +0.0212 on that scale at these fold
+sizes. All six scorer figures are inside the resulting null; only the health-oracle
+ceiling in Pile 2 clears it. Paired against a random scorer over 40 seeds the
+rules scorer does carry signal (rules+CH +0.032, t = 3.31) and the fitted rungs do
+not. Full account in [evaluation-null.md](evaluation-null.md); this page's claim
+that the rules baseline "sits on the prevalence line" was right about the
+single-shot evaluation and too generous about the bake-off.
 
 ### Pile 3 — illustrative magnitude (synthetic; not real-world performance)
 
@@ -120,8 +131,10 @@ Stating this plainly because the domain invites the opposite reading:
 ## Reproduce
 
 ```bash
-uv run pytest                                 # the suite behind Pile 1
-uv run mypy                                   # strict, whole engine
-uv run python scripts/eval_risk_baseline.py   # rules baseline vs prevalence
-uv run python scripts/bakeoff_risk.py         # purged vs unpurged, all rungs, + ceiling
+uv run pytest                                    # the suite behind Pile 1
+uv run mypy                                      # strict, whole engine
+uv run python scripts/eval_risk_baseline.py      # rules baseline vs prevalence
+uv run python scripts/bakeoff_risk.py            # purged vs unpurged, all rungs, + ceiling
+uv run python scripts/null_risk_bakeoff.py       # what a random scorer scores on the same folds
+uv run python scripts/controls_risk_generator.py # is the benchmark circular? (no)
 ```

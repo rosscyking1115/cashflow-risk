@@ -7,6 +7,17 @@
 > (see [adr/0002](adr/0002-anti-circular-synthetic-data.md) and
 > [CREDIBILITY.md](CREDIBILITY.md)).
 
+> [!IMPORTANT]
+> **Correction — this page's comparisons had no null distribution.** Every scorer
+> figure below is reported as a lift over *prevalence*, and at these fold sizes an
+> uninformative scorer already scores **+0.0212** on that scale. All of them are
+> inside the resulting null; only the health-oracle ceiling clears it. Measured
+> properly — paired against a random scorer over 40 seeds — the rules scorer does
+> carry signal (**rules+CH +0.032, t = 3.31**) and the fitted rungs do not. The
+> figures below are accurate measurements and have not been altered; what they
+> support is narrower than this page said.
+> **Read [evaluation-null.md](evaluation-null.md) before any number here.**
+
 ## Summary
 
 At the issue-time prediction origin, **neither fitted rung beats its rules

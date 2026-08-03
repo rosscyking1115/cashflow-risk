@@ -12,9 +12,15 @@ Built from a **latent mechanism the model is never given** (see
 - Customer sizes follow a power law, so receivables concentrate in a few names;
 - invoices whose payment date falls past the horizon are left unpaid (censored);
 - a fraction of customers are incorporated (limited companies): their invoices
-  carry a company number, and synthetic Companies House signals are derived from
-  latent health *plus noise* — a partial, public-register observation of health,
-  which is exactly what real CH data is to real payment behaviour.
+  carry a company identifier, and synthetic Companies House signals are derived
+  from latent health *plus noise* — a partial, public-register observation of
+  health, which is exactly what real CH data is to real payment behaviour.
+
+Those identifiers are **deliberately non-resolvable** (``SYNTH-0007``, not
+``10000007``) because the signals attached to them are fabricated. Distress flags
+invented by a random number generator must not name a real company, and an
+identifier that merely looks unused is not safe — see
+:data:`SYNTHETIC_NUMBER_PREFIX`.
 
 The latent truth (health, macro, draw probabilities) is returned in a *separate*
 ``latent`` table for analysis and generator validation — it must never be fed to
@@ -38,6 +44,32 @@ _TERMS = np.array([14, 30, 60])
 _TERMS_PROBS = np.array([0.2, 0.6, 0.2])
 _AR1_PHI = 0.7
 
+# Synthetic customers carry a deliberately **non-resolvable** company identifier.
+#
+# A real Companies House number is exactly eight alphanumeric characters — eight
+# digits, or a two-letter prefix and six digits (SC, NI, OC, SO and friends). This
+# format is ten characters and contains a hyphen, which no Companies House format
+# permits, so it cannot collide on shape rather than merely on an unissued range.
+# That distinction is the whole point: ranges get issued.
+#
+# This generator previously used ``f"{10000000 + i:08d}"``, which produced
+# 10000000–10000029. Those are real, currently-registered UK companies, and the
+# generator was attaching fabricated insolvency and overdue-filing flags to them.
+SYNTHETIC_NUMBER_PREFIX = "SYNTH"
+
+
+def synthetic_company_number(index: int) -> str:
+    """A company identifier that cannot resolve on the public register.
+
+    Args:
+        index: The customer's position in the generated set.
+
+    Returns:
+        An identifier of the form ``SYNTH-0007`` — structurally invalid as a
+        Companies House number, so it can never name a real company.
+    """
+    return f"{SYNTHETIC_NUMBER_PREFIX}-{index:04d}"
+
 
 @dataclass(frozen=True)
 class GeneratorConfig:
@@ -60,8 +92,11 @@ class SyntheticDataset:
 
     ``latent`` holds the ground-truth generative variables (per invoice). It is
     for analysis only and must not be used as model features. ``company_signals``
-    maps an incorporated customer's company number to its synthetic Companies
+    maps an incorporated customer's company identifier to its synthetic Companies
     House signals — a *noisy* observation of latent health that models may see.
+
+    The identifiers are non-resolvable by construction
+    (:func:`synthetic_company_number`); nothing here names a real company.
     """
 
     business: Business
@@ -129,8 +164,9 @@ def generate_dataset(config: GeneratorConfig) -> SyntheticDataset:
     # is bit-identical whether signals are on or off — a clean A/B) ---
     rng_signals = np.random.default_rng([config.seed, 813])
     incorporated = rng_signals.random(n) < config.incorporated_frac
+    # Deliberately non-resolvable identifiers — see SYNTHETIC_NUMBER_PREFIX.
     company_numbers: dict[int, str] = {
-        i: f"{10000000 + i:08d}" for i in range(n) if incorporated[i]
+        i: synthetic_company_number(i) for i in range(n) if incorporated[i]
     }
     company_signals = {
         number: _synthetic_signals(rng_signals, number, float(health[i]))

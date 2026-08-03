@@ -14,6 +14,13 @@ into each customer's score, and writes a short action brief. Every score comes
 with the reason behind it. The score orders the chase list; it is a ranking
 score, not a calibrated probability, and the repo measures how far off it is.
 
+> **A current screenshot is pending.** The image that used to sit here was taken
+> before the dashboard gained its synthetic-data banner and before it stopped
+> presenting risk scores as calibrated probabilities, so it showed a version of
+> this product whose framing the project has since published a correction against.
+> It has been removed rather than left in place. Run the dashboard with the two
+> commands under [Getting started](#getting-started) to see the current one.
+
 > Part of my responsible-fintech cluster, alongside
 > [responsible-neobank-growth](https://github.com/rosscyking1115/responsible-neobank-growth)
 > and
@@ -51,10 +58,6 @@ The [dashboard](#getting-started) is two more commands if you want the UI.
 > reasoning, including the free option that would have worked and why it was
 > declined anyway.
 
-![The dashboard on synthetic data: a 13-week cash-runway readout and forecast, the invoices ranked by cash at risk with plain-English drivers, and the week's recommended action.](docs/images/dashboard.png)
-
-<p align="center"><em>The dashboard running locally on synthetic demo data: runway forecast, cash-at-risk ranking, and the weekly action.</em></p>
-
 ## What it does
 
 - Forecasts 13 weeks of cash from an invoice ledger, timing each invoice by when
@@ -64,7 +67,12 @@ The [dashboard](#getting-started) is two more commands if you want the UI.
 - Writes an action brief: the chase list for the week and what it does to the
   runway.
 - Reads a customer's Companies House record (overdue accounts, insolvency,
-  charges) into their late-payment score, refreshed by a daily job.
+  charges) into their late-payment score. A daily refresh job exists
+  ([`scripts/daily_maintenance.py`](scripts/daily_maintenance.py), declared as a
+  cron in [`render.yaml`](render.yaml)) but **is not running anywhere** — nothing
+  is deployed. No figure reported in this repository has touched the live
+  Companies House API; the evaluation's Companies House arm uses generated
+  signals, which is what the synthetic-data boundary above means in practice.
 - Separates tenants. Owners and invited accountants get different roles, every
   query is scoped to a business, and a cross-tenant read is refused.
 
@@ -90,21 +98,12 @@ Next.js, React, Tailwind, Clerk, Sentry, Render, GitHub Actions.
 
 The engine runs under **`mypy --strict`** — `strict = true` in
 [`pyproject.toml`](pyproject.toml), not a handful of strict-ish flags — across the
-whole `cashflow_risk` package, 44 source files, no `ignore_errors` and no
-per-module opt-outs beyond four `ignore_missing_imports` entries for third-party
-libraries that ship no stubs.
-
-It is a gate, not a habit. CI runs `uv run mypy` as its own step on every push and
-every pull request, with no `continue-on-error`, so a type error fails the build
-and the branch does not merge. Same for `ruff check` and the test suite. Run it
-yourself:
-
-```bash
-uv run mypy        # Success: no issues found in 44 source files
-```
-
-Scope worth knowing: the check covers the published package. `tests/` and
-`scripts/` are outside it.
+whole `cashflow_risk` package, with no `ignore_errors` and no per-module opt-outs
+beyond a few `ignore_missing_imports` entries for third-party libraries that ship
+no stubs. It is a gate, not a habit: CI runs it as its own step with no
+`continue-on-error`, so a type error fails the build and the branch does not
+merge. Same for `ruff check` and the test suite.
+[Run it yourself](docs/running-locally.md#testing-and-ci).
 
 ## Model evaluation
 
@@ -145,6 +144,17 @@ reason not to: the evaluation was capable of detecting that its own models had n
 edge, and it did. The purge, the matched-window comparison and the rules control
 are the machinery that made a negative result findable instead of comfortable.
 
+**And that machinery had a hole in it, which an audit of this repository found.**
+Every lift above is measured against prevalence, and at these fold sizes an
+uninformative scorer already scores **+0.0212** on that scale — so all six scorer
+figures sit inside the null, and the −0.012 margin is being read inside a band
+roughly ±0.04 wide. The same measurement done properly, paired against a random
+scorer over 40 seeds, says something the five-seed protocol could not see: the
+**rules scorer carries real signal** (rules+CH +0.032, t = 3.31) and the fitted
+rungs still do not. The defect class is *a comparison with no null distribution*.
+[docs/evaluation-null.md](docs/evaluation-null.md) reports both halves, and
+[`scripts/null_risk_bakeoff.py`](scripts/null_risk_bakeoff.py) reproduces them.
+
 ## Security and privacy
 
 An invoice ledger is commercially sensitive, and where the customers are sole
@@ -170,36 +180,16 @@ processing synthetic data does not trigger either one.
 
 ## Getting started
 
-You need [uv](https://docs.astral.sh/uv/) (Python 3.12) and Node.js 20+.
-
-Run the engine and print an action brief for a synthetic business:
+You need [uv](https://docs.astral.sh/uv/) (Python 3.12), and Node.js 20+ for the
+dashboard. No accounts, no API keys.
 
 ```bash
 uv sync                          # create the venv + install deps
-uv run pytest                    # run the test suite
 uv run python scripts/demo.py    # print an action brief for a synthetic SME
 ```
 
-Reproduce the model evaluation:
-
-```bash
-uv run python scripts/eval_risk_baseline.py   # rules-baseline metrics
-uv run python scripts/bakeoff_risk.py         # rules vs logistic vs GBM, backtested
-```
-
-Run the dashboard, which needs two processes:
-
-```bash
-# 1. API. CASHFLOW_ENV=dev enables a local token so uploads work without a
-#    hosted login; omit it and only the public demo is available.
-CASHFLOW_ENV=dev uv run uvicorn cashflow_risk.api:app --port 8000
-
-# 2. Web dashboard (another terminal); npm install only the first time.
-cd web && npm install && npm run dev   # http://localhost:3000
-```
-
-It opens on the public demo. **Invoices CSV** analyses your own export; the tenant
-comes from the token, never from client input.
+The dashboard, the configuration table, migrations and the check commands are in
+**[docs/running-locally.md](docs/running-locally.md)**.
 
 > [!NOTE]
 > The synthetic data is the only data. Every number in this repository comes from
@@ -207,46 +197,6 @@ comes from the token, never from client input.
 > magnitudes are illustrative and nothing here is evidence of predictive skill on
 > a real ledger. [docs/CREDIBILITY.md](docs/CREDIBILITY.md) sorts every figure
 > into what it can and cannot support.
-
-## Configuration
-
-Configuration comes from the environment. The defaults are safe, so it runs
-locally with none of it set. Copy [`.env.example`](.env.example) to `.env` to
-change anything.
-
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | Postgres connection string (defaults to a local SQLite file) |
-| `CASHFLOW_JWT_SECRET` | Signing secret; **required** in production |
-| `CASHFLOW_ENV` | `dev` enables the local dev-token endpoint |
-| `CLERK_JWKS_URL`, `CLERK_ISSUER` | Enable Clerk-verified sign-in on the API |
-| `COMPANIES_HOUSE_API_KEY` | Enables customer risk enrichment |
-| `SENTRY_DSN` | Enables PII-scrubbed error reporting (optional) |
-| `CASHFLOW_RETENTION_DAYS` | Auto-purge window for results (default 730) |
-| `NEXT_PUBLIC_API_BASE` | Points the web app at a non-default API |
-
-## Database and migrations
-
-Local dev creates the SQLite tables on startup. Managed databases use Alembic, and
-the API runs `alembic upgrade head` when it deploys:
-
-```bash
-uv run alembic upgrade head                              # apply migrations
-uv run alembic revision --autogenerate -m "describe it"  # after a model change
-```
-
-## Testing and CI
-
-```bash
-uv run pytest          # tests
-uv run ruff check .    # lint
-uv run mypy            # type-check (strict)
-```
-
-Every push and pull request runs those, plus a check that the migrations apply to
-an empty database and still match the models (`alembic upgrade head` and
-`alembic check`), plus the Next.js production build. See
-[.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 ## Deployment
 
@@ -268,7 +218,7 @@ refuses to start in production without one rather than falling back to SQLite.
 |---|---|
 | `src/cashflow_risk/` | The engine: `domain`, `datagen`, `features`, `forecasting`, `risk`, `reporting`, `ingestion`, `enrichment`, `db`, `auth`, `api` |
 | `web/` | Next.js dashboard |
-| `scripts/` | `demo.py`, the model evaluation and risk bake-off, and the daily maintenance job |
+| `scripts/` | `demo.py`, the model evaluation and risk bake-off, the null and circularity controls, and the daily maintenance job |
 | `alembic/` | Database migrations |
 | `docs/` | Architecture, and the security and privacy docs |
 
@@ -283,11 +233,20 @@ attribution: *Contains public sector information licensed under the Open
 Government Licence v3.0.* Every other figure in the repository is generated, not
 sourced.
 
+The generator's Companies House signals are fabricated, so the customers they
+belong to carry **deliberately non-resolvable identifiers** — `SYNTH-0007`, which
+is not a valid Companies House number in any format and therefore cannot name a
+real company. They previously used real eight-digit numbers, which did name real
+companies; [CHANGELOG.md](CHANGELOG.md) records the correction.
+
 ## Documentation
 
+- [docs/running-locally.md](docs/running-locally.md) — the dashboard, configuration, migrations, and the check commands
 - [docs/MODEL_CARD.md](docs/MODEL_CARD.md) — what the model is, what it scored, and what it may not be used for
 - [docs/CREDIBILITY.md](docs/CREDIBILITY.md) — what each number may and may not be read as
 - [docs/model-evaluation.md](docs/model-evaluation.md) — how the risk model is measured, and what it scored
+- [docs/evaluation-null.md](docs/evaluation-null.md) — the bake-off had no null distribution: what that over-claimed, and what it under-claimed
+- [CHANGELOG.md](CHANGELOG.md) — corrections, recorded as corrections
 - [docs/architecture.md](docs/architecture.md) — architecture and its trade-offs
 - [CONTEXT.md](CONTEXT.md) — the domain model and ubiquitous language
 - [SECURITY.md](SECURITY.md) — security posture and vulnerability reporting

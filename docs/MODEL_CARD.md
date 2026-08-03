@@ -14,6 +14,15 @@ below the base rate. The model that ships is the transparent rules scorer.
 That is a negative result, and it is the reason this card exists. The evaluation
 was capable of detecting that its own models had no edge, and it did.
 
+> [!IMPORTANT]
+> **The comparison behind that headline had no null distribution.** Every lift on
+> this card is measured against prevalence, and an uninformative scorer already
+> scores +0.0212 on that scale at these fold sizes — so the fitted-versus-rules
+> figures are inside the null rather than separated by it. Paired against a random
+> scorer over 40 seeds the conclusion survives and sharpens: the rules scorer
+> carries signal (rules+CH +0.032, t = 3.31), the fitted rungs do not.
+> [evaluation-null.md](evaluation-null.md) has the measurement.
+
 ## What ships
 
 | | |
